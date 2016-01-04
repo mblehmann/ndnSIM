@@ -77,7 +77,7 @@ MobileUser::GetTypeId(void)
          MakeUintegerChecker<uint32_t>())
       .AddAttribute("KeyLocator",
                     "Name to be used for key locator.  If root, then key locator is not used",
-                    NameValue(), MakeNameAccessor(&MobileUser::m_keyLocator), MakeNameChecker());
+                    NameValue(), MakeNameAccessor(&MobileUser::m_keyLocator), MakeNameChecker())
 
       .AddAttribute("StartSeq", "Initial sequence number", IntegerValue(0),
                     MakeIntegerAccessor(&MobileUser::m_seq), MakeIntegerChecker<int32_t>())
