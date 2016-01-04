@@ -352,6 +352,12 @@ MobileUser::WillSendOutInterest(uint32_t sequenceNumber)
   m_rtt->SentSeq(SequenceNumber32(sequenceNumber), 1);
 }
 
+// TODO
+void
+MobileUser::ScheduleNextPacket()
+{
+}
+
 } // namespace ndn
 } // namespace ns3
 

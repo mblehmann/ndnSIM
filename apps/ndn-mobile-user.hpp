@@ -37,6 +37,9 @@
 #include "ns3/ndnSIM/utils/ndn-rtt-estimator.hpp"
 #include "ns3/ndnSIM/utils/ndn-fw-hop-count-tag.hpp"
 
+//TODO check
+#include "ndn-consumer.hpp"
+
 #include <set>
 #include <map>
 
@@ -110,7 +113,7 @@ protected:
    * protocol
    */
   virtual void
-  ScheduleNextPacket() = 0;
+  ScheduleNextPacket();
 
   /**
    * \brief Checks if the packet need to be retransmitted becuase of retransmission timer expiration
