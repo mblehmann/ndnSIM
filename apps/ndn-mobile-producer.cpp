@@ -59,65 +59,149 @@ MobileProducer::MobileProducer()
 void
 MobileProducer::PublishContent()
 {
-  newObject = m_prefix + m_postfix + m_producedObjects;
-  m_generatedContent.add(newObject);
+  // Name newObject = createContent();
 
-  advertiseContent(newObject);
+  // // Advertise the new content
+  // advertiseContent(newObject);
 
-  AnnounceContent(newObject);
+  // AnnounceContent(newObject);
 
-  PushContent(newObject);
+  // discoverVicinity(newObject)
 
+  // Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent(newObject), this);
+}
+
+/**
+ * Create a new content.
+ */
+Name
+MobileProducer::createContent()
+{
+  // // Get the index of the next object
+  // int objectIndex = m_generatedContent.size();
+
+  // // Name is /producer/object<index>
+  // // Objects have segments /producer/object<index>/#seg
+  // shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
+  // newObject.append(m_postfix + objectIndex);
+
+  // // Add to the list of generated content
+  // m_generatedContent.push_back(newObject);
+
+  // return newObject;
 }
 
 /**
  * Advertise a new content.
  * Puts it into a shared data structure and set who should request it (popularity of the content).
+ * I don't know yet how to do it.
  */
 void
 MobileProducer::advertiseContent(Name newObject)
 {
-  allContents.add(newObject);
-  setContentPopularity();
+//  allContents.add(newObject);
+//  setContentPopularity();
 }
 
 /**
- *
+ * Announce all the objects
  */
 void
 MobileProducer::AnnounceContent()
 {
-  for (Name object : m_generatedContent) {
-    AnnounceContent(object);
-  }
+  // for (std::list<Name>::iterator object = m_generatedContent.begin(); object != m_generatedContent.end(); ++object) {
+  //   AnnounceContent(object);
+  // }
 }
 
 /**
- *
+ * Announce a specific object
  */
 void
 MobileProducer::AnnounceContent(Name object)
 {
-  auto announcement = make_shared<Announcement>();
-  announcement->setName(object);
+  // // Create the announcement packet
+  // shared_ptr<Announcement> announcement = make_shared<Announcement>();
+  // announcement->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
+  // announcement->setName(object);
 
-  announcement->wireEncode();
+  // // Log information
+  // NS_LOG_INFO("> Announcement for " << object);
 
-  m_transmittedDatas(announcement, this, m_face);
-  m_face->onReceiveAnnouncement(*announcement);
+  // // Send the packet
+  // announcement->wireEncode();
+
+  // m_transmittedAnnouncements(announcement, this, m_face);
+  // m_face->onReceiveAnnouncement(*announcement);
 }
 
 /**
- *
+ * Execute the whole push content operation
  */
 void
-MobileProducer::PushContent()
+MobileProducer::PushContent(Name object)
 {
-  discoverVicinity();
+  // Name device;
 
-  selectDevice();
+  // for (int i = 0; i < m_replicationDegree; i++) {
+  //   device = selectDevice();
+  //   sendContent(device, object);
+  // }
+}
 
-  sendContent();
+/**
+ * Send packets to discover the vicinity
+ */
+void
+MobileProducer::discoverVicinity(Name object)
+{
+  // m_vicinity.clear();
+
+  // // Create the vicinity packet
+  // shared_ptr<Vicinity> vicinity = make_shared<Vicinity>();
+  // vicinity->setName(object);
+
+  // // Log information
+  // NS_LOG_INFO("> Vicinity discovery for " << object);
+
+  // // Send the packet
+  // vicinity->wireEncode();
+
+  // m_transmittedVicinities(vicinity, this, m_face);
+  // m_face->onReceiveVicinity(*vicinity);
+}
+
+void
+MobileProducer::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
+{
+  // m_vicinity.push_back(vicinityData->getName());
+}
+
+Name
+MobileProducer::selectDevice()
+{
+  // int position = m_rand->GetValue(0, m_vicinity.size());
+
+  // std::list<Name>::iterator device = std::next(m_vicinity.begin(), position);
+
+  // return device;
+}
+
+void
+MobileProducer::sendContent(Name device, Name object)
+{
+  // // Create the vicinity packet
+  // shared_ptr<Hint> hint = make_shared<Hint>();
+  // hint->setName(object);
+
+  // // Log information
+  // NS_LOG_INFO("> Hint to " << device << " for " << object);
+
+  // // Send the packet
+  // hint->wireEncode();
+
+  // m_transmittedHints(hint, this, m_face);
+  // m_face->onReceiveHint(*hint);
 }
 
 

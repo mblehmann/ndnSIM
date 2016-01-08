@@ -26,6 +26,8 @@
 #include "ndn-producer.hpp"
 #include "ns3/traced-value.h"
 
+#include <list>
+
 namespace ns3 {
 namespace ndn {
 
@@ -44,6 +46,9 @@ public:
   virtual void
   PublishContent();
 
+  virtual Name
+  createContent();
+  
   virtual void
   advertiseContent(Name object);
 
@@ -55,10 +60,36 @@ public:
 
   virtual void
   PushContent();
+
+  virtual void
+  discoverVicinity();
+
+  virtual void
+  OnVicinityData(shared_ptr<const VicinityData> vicinityData);
+
+public:
+  typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
+  typedef void (*VicinityTraceCallback)(shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>);
+  typedef void (*HintTraceCallback)(shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>);
   
 private:
-  Name[] m_generatedContent;
-  uint32_t m_producedObjects; 
+  std::list<Name> m_generatedContent;
+
+  std::list<Name> m_vicinity;
+
+  uint32_t m_vicinityTimer;
+  uint32_t m_replicationDegree;
+
+  Ptr<UniformRandomVariable> m_rand; ///< @brief nonce generator
+
+  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedAnnouncements; ///< @brief App-level trace of transmitted Announcement
+
+  TracedCallback<shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedVicinities; ///< @brief App-level trace of transmitted Vicinity
+
+  TracedCallback<shared_ptr<const Hint>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedHints; ///< @brief App-level trace of transmitted Hint
 
 };
 
