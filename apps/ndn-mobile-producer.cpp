@@ -29,6 +29,11 @@
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
 
+#include <ndn-cxx/announcement.hpp>
+#include <ndn-cxx/hint.hpp>
+#include <ndn-cxx/vicinity.hpp>
+#include <ndn-cxx/vicinity-data.hpp>
+
 using namespace std;
 
 NS_LOG_COMPONENT_DEFINE("ndn.MobileProducer");
@@ -55,27 +60,15 @@ MobileProducer::MobileProducer()
 }
 
 void
-MobileProducer::setVicinityTimer(time::milliseconds vicinityTimer)
+MobileProducer::setVicinityTimer(Time vicinityTimer)
 {
   m_vicinityTimer = vicinityTimer;
-}
-
-time::milliseconds
-MobileProducer::getVicinityTimer()
-{
-  return m_vicinityTimer;
 }
 
 void
 MobileProducer::setReplicationDegree(uint32_t replicationDegree)
 {
   m_replicationDegree = replicationDegree;
-}
-
-uint32_t
-MobileProducer::getReplicationDegree()
-{
-  return m_replicationDegree;
 }
 
 
@@ -96,7 +89,8 @@ MobileProducer::PublishContent()
 
   discoverVicinity(newObject);
 
-//  Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent, this);
+  // scheduling events!!
+  Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent, this, &newObject);
 }
 
 /**
@@ -128,8 +122,8 @@ MobileProducer::createContent()
 void
 MobileProducer::advertiseContent(Name newObject)
 {
-  //m_nameService.publishContent(newObject);
-  //m_nameService.setRequests(newObject);
+  m_nameService->publishContent(newObject);
+  m_nameService->setRequests(newObject);
 }
 
 /**
@@ -151,18 +145,17 @@ void
 MobileProducer::AnnounceContent(Name object)
 {
   // Create the announcement packet
-//  shared_ptr<Announcement> announcement = make_shared<Announcement>();
-//  announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
-//  announcement->setName(object);
+  shared_ptr<Announcement> announcement = make_shared<Announcement>(object);
+  announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
 
   // Log information
   NS_LOG_INFO("> Announcement for " << object);
 
   // Send the packet
-//  announcement->wireEncode();
+  announcement->wireEncode();
 
-//  m_transmittedAnnouncements(announcement, this, m_face);
-//  m_face->onReceiveAnnouncement(*announcement);
+  m_transmittedAnnouncements(announcement, this, m_face);
+  m_face->onReceiveAnnouncement(*announcement);
 }
 
 /**
@@ -187,11 +180,11 @@ MobileProducer::discoverVicinity(Name object)
 //  m_face->onReceiveVicinity(*vicinity);
 }
 
-//void
-//MobileProducer::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
-//{
-//  m_vicinity.push_back(vicinityData->getName());
-//}
+void
+MobileProducer::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
+{
+  m_vicinity.push_back(vicinityData->getName());
+}
 
 /**
  * Execute the whole push content operation

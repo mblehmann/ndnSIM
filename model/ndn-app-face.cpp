@@ -87,5 +87,11 @@ AppFace::onReceiveData(const Data& data)
   this->emitSignal(onReceiveData, data);
 }
 
+void
+AppFace::onReceiveAnnouncement(const Announcement& announcement)
+{
+  this->emitSignal(onReceiveAnnouncement, announcement);
+}
+
 } // namespace ndn
 } // namespace ns3

@@ -24,12 +24,19 @@
 #include "ns3/ndnSIM/NFD/daemon/face/local-face.hpp"
 #include "ns3/ndnSIM/model/ndn-face.hpp"
 
+#include <ndn-cxx/announcement.hpp>
+#include <ndn-cxx/hint.hpp>
+#include <ndn-cxx/vicinity.hpp>
+#include <ndn-cxx/vicinity-data.hpp>
+
 namespace ns3 {
 
 class Packet;
 class Node;
 
 namespace ndn {
+
+using ::ndn::Announcement;
 
 class App;
 
@@ -76,6 +83,9 @@ public: // from nfd::Face
    */
   void
   onReceiveData(const Data& data);
+
+  void
+  onReceiveAnnouncement(const Announcement& announcement);
 
   virtual void
   close();
