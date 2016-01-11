@@ -23,7 +23,6 @@
 #include <list>
 
 #include "ns3/object.h"
-#include "ns3/random-variable.h"
 
 #include "ndn-cxx/name.hpp"
 
