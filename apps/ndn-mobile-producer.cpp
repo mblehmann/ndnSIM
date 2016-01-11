@@ -29,6 +29,8 @@
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
 
+using namespace std;
+
 NS_LOG_COMPONENT_DEFINE("ndn.MobileProducer");
 
 namespace ns3 {
@@ -52,6 +54,32 @@ MobileProducer::MobileProducer()
 {
 }
 
+void
+MobileProducer::setVicinityTimer(time::milliseconds vicinityTimer)
+{
+  m_vicinityTimer = vicinityTimer;
+}
+
+time::milliseconds
+MobileProducer::getVicinityTimer()
+{
+  return vicinityTimer;
+}
+
+void
+MobileProducer::setReplicationDegree(uint32_t replicationDegree)
+{
+  m_replicationDegree = replicationDegree;
+}
+
+uint32_t
+MobileProducer::getReplicationDegree()
+{
+  return m_replicationDegree;
+}
+
+
+
 /**
  * Create a new content.
  * Sets it popularity through advertisement.
@@ -59,16 +87,16 @@ MobileProducer::MobileProducer()
 void
 MobileProducer::PublishContent()
 {
-  // Name newObject = createContent();
+  Name newObject = createContent();
 
-  // // Advertise the new content
-  // advertiseContent(newObject);
+  // Advertise the new content
+  advertiseContent(newObject);
 
-  // AnnounceContent(newObject);
+  AnnounceContent(newObject);
 
-  // discoverVicinity(newObject)
+  discoverVicinity(newObject)
 
-  // Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent(newObject), this);
+  Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent(newObject), this);
 }
 
 /**
@@ -77,18 +105,18 @@ MobileProducer::PublishContent()
 Name
 MobileProducer::createContent()
 {
-  // // Get the index of the next object
-  // int objectIndex = m_generatedContent.size();
+  // Get the index of the next object
+  int objectIndex = m_generatedContent.size();
 
-  // // Name is /producer/object<index>
-  // // Objects have segments /producer/object<index>/#seg
-  // shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
-  // newObject.append(m_postfix + objectIndex);
+  // Name is /producer/object<index>
+  // Objects have segments /producer/object<index>/#seg
+  shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
+  newObject.append(m_postfix + objectIndex);
 
-  // // Add to the list of generated content
-  // m_generatedContent.push_back(newObject);
+  // Add to the list of generated content
+  m_generatedContent.push_back(newObject);
 
-  // return newObject;
+  return newObject;
 }
 
 /**
@@ -99,8 +127,8 @@ MobileProducer::createContent()
 void
 MobileProducer::advertiseContent(Name newObject)
 {
-//  allContents.add(newObject);
-//  setContentPopularity();
+  m_nameService.publishContent(newObject);
+  m_nameService.setRequests(newObject);
 }
 
 /**
@@ -109,9 +137,10 @@ MobileProducer::advertiseContent(Name newObject)
 void
 MobileProducer::AnnounceContent()
 {
-  // for (std::list<Name>::iterator object = m_generatedContent.begin(); object != m_generatedContent.end(); ++object) {
-  //   AnnounceContent(object);
-  // }
+  publishedObjects = m_generatedContent.size();
+  for (int i = 0; i < publishedObjects; i++) {
+    AnnounceContent(m_generatedContent[i]);
+  }
 }
 
 /**
@@ -120,33 +149,19 @@ MobileProducer::AnnounceContent()
 void
 MobileProducer::AnnounceContent(Name object)
 {
-  // // Create the announcement packet
-  // shared_ptr<Announcement> announcement = make_shared<Announcement>();
-  // announcement->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
-  // announcement->setName(object);
+  // Create the announcement packet
+  shared_ptr<Announcement> announcement = make_shared<Announcement>();
+  announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
+  announcement->setName(object);
 
-  // // Log information
-  // NS_LOG_INFO("> Announcement for " << object);
+  // Log information
+  NS_LOG_INFO("> Announcement for " << object);
 
-  // // Send the packet
-  // announcement->wireEncode();
+  // Send the packet
+  announcement->wireEncode();
 
-  // m_transmittedAnnouncements(announcement, this, m_face);
-  // m_face->onReceiveAnnouncement(*announcement);
-}
-
-/**
- * Execute the whole push content operation
- */
-void
-MobileProducer::PushContent(Name object)
-{
-  // Name device;
-
-  // for (int i = 0; i < m_replicationDegree; i++) {
-  //   device = selectDevice();
-  //   sendContent(device, object);
-  // }
+  m_transmittedAnnouncements(announcement, this, m_face);
+  m_face->onReceiveAnnouncement(*announcement);
 }
 
 /**
@@ -155,53 +170,64 @@ MobileProducer::PushContent(Name object)
 void
 MobileProducer::discoverVicinity(Name object)
 {
-  // m_vicinity.clear();
+  m_vicinity.clear();
 
-  // // Create the vicinity packet
-  // shared_ptr<Vicinity> vicinity = make_shared<Vicinity>();
-  // vicinity->setName(object);
+  // Create the vicinity packet
+  shared_ptr<Vicinity> vicinity = make_shared<Vicinity>();
+  vicinity->setName(object);
 
-  // // Log information
-  // NS_LOG_INFO("> Vicinity discovery for " << object);
+  // Log information
+  NS_LOG_INFO("> Vicinity discovery for " << object);
 
-  // // Send the packet
-  // vicinity->wireEncode();
+  // Send the packet
+  vicinity->wireEncode();
 
-  // m_transmittedVicinities(vicinity, this, m_face);
-  // m_face->onReceiveVicinity(*vicinity);
+  m_transmittedVicinities(vicinity, this, m_face);
+  m_face->onReceiveVicinity(*vicinity);
 }
 
 void
 MobileProducer::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
 {
-  // m_vicinity.push_back(vicinityData->getName());
+  m_vicinity.push_back(vicinityData->getName());
+}
+
+/**
+ * Execute the whole push content operation
+ */
+void
+MobileProducer::PushContent(Name object)
+{
+  Name device;
+
+  for (int i = 0; i < m_replicationDegree; i++) {
+    device = selectDevice();
+    sendContent(device, object);
+  }
 }
 
 Name
 MobileProducer::selectDevice()
 {
-  // int position = m_rand->GetValue(0, m_vicinity.size());
-
-  // std::list<Name>::iterator device = std::next(m_vicinity.begin(), position);
-
-  // return device;
+  int position = m_rand->GetValue(0, m_vicinity.size());
+  return m_vicinity[position];
 }
 
 void
 MobileProducer::sendContent(Name device, Name object)
 {
-  // // Create the vicinity packet
-  // shared_ptr<Hint> hint = make_shared<Hint>();
-  // hint->setName(object);
+  // Create the vicinity packet
+  shared_ptr<Hint> hint = make_shared<Hint>();
+  hint->setName(object);
 
-  // // Log information
-  // NS_LOG_INFO("> Hint to " << device << " for " << object);
+  // Log information
+  NS_LOG_INFO("> Hint to " << device << " for " << object);
 
-  // // Send the packet
-  // hint->wireEncode();
+  // Send the packet
+  hint->wireEncode();
 
-  // m_transmittedHints(hint, this, m_face);
-  // m_face->onReceiveHint(*hint);
+  m_transmittedHints(hint, this, m_face);
+  m_face->onReceiveHint(*hint);
 }
 
 

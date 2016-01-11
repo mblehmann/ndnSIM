@@ -17,31 +17,34 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-#include "ndn-catalog.h"
+#include "ndn-catalog.hpp"
 
 #include <list>
-#include <ns3/assert.h>
 
-Catalog::Catalog()
+NameService::NameService()
   : m_catalog()
 {
 }
 
-Catalog::~Catalog()
+NameService::~NameService()
 {
 }
 
-void Catalog::publishContent(Name object)
+void NameService::publishContent(Name object)
 {
   m_catalog.push_back(object);
 }
 
-Name Catalog::getLastObjectPublished()
+void NameService::setRequests(Name object)
+{
+}
+
+Name NameService::getLastObjectPublished()
 {
   return m_catalog.back();
 }
 
-uint32_t Catalog::getCatalogSize()
+uint32_t NameService::getCatalogSize()
 {
   return m_catalog.size();
 }

@@ -17,8 +17,8 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-#ifndef NDN_CATALOG_H
-#define NDN_CATALOG_H
+#ifndef NDN_NAME_SERVICE_H
+#define NDN_NAME_SERVICE_H
 
 #include <list>
 
@@ -29,20 +29,22 @@
 
 using namespace std;
 
-class Catalog : public ns3::Object
+class NameService : public ns3::Object
 {
 public:
-  Catalog();
-  ~Catalog();
+  NameService();
+  ~NameService();
   
   void publishContent(Name object);
-  Name getLastObjectPublished();
+  void setRequests(Name object);
 
+  Name getLastObjectPublished();
   uint32_t getCatalogSize();
 
 private:
   list<Name> m_catalog;
+  //list<Nodes> m_users;
   
 };
 
-#endif // NDN_CATALOG_H
+#endif // NDN_NAME_SERVICE_H
