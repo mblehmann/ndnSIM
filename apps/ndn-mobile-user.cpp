@@ -28,6 +28,10 @@
 #include "ns3/string.h"
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
+ 
+#include <list>
+
+using namespace std;
 
 NS_LOG_COMPONENT_DEFINE("ndn.MobileUser");
 
@@ -128,7 +132,7 @@ MobileUser::AddInterestObject(Name objectName, uint32_t chunks)
   shared_ptr<Name> interestName = make_shared<Name>(objectName);
 
   //for each chunk, append the sequence number and add it to the interest queue
-  for (int i = 0; i < chunks; i++) {
+  for (uint32_t i = 0; i < chunks; i++) {
     interestName->appendSequenceNumber(i);
     m_interestQueue.push_back(interestName);
   }

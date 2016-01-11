@@ -32,7 +32,7 @@
 #include <ndn-cxx/vicinity.hpp>
 #include <ndn-cxx/vicinity-data.hpp>
 
-#include <util/ndn-catalog.hpp>
+#include <utils/ndn-catalog.hpp>
 
 #include <vector>
 
