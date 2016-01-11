@@ -19,7 +19,13 @@
 
 #include "ndn-catalog.hpp"
 
+#include <ndn-cxx/name.hpp>
 #include <list>
+
+using namespace std;
+
+namespace ns3 {
+namespace ndn {
 
 NameService::NameService()
   : m_catalog()
@@ -49,4 +55,5 @@ uint32_t NameService::getCatalogSize()
   return m_catalog.size();
 }
 
-}
+} // namespace ndn
+} // namespace ns3

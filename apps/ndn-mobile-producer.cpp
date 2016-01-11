@@ -45,7 +45,7 @@ MobileProducer::GetTypeId(void)
     TypeId("ns3::ndn::MobileProducer")
       .SetGroupName("Ndn")
       .SetParent<App>()
-      .AddConstructor<MobileProducer>()
+      .AddConstructor<MobileProducer>();
 
   return tid;
 }
@@ -63,7 +63,7 @@ MobileProducer::setVicinityTimer(time::milliseconds vicinityTimer)
 time::milliseconds
 MobileProducer::getVicinityTimer()
 {
-  return vicinityTimer;
+  return m_vicinityTimer;
 }
 
 void
@@ -76,6 +76,18 @@ uint32_t
 MobileProducer::getReplicationDegree()
 {
   return m_replicationDegree;
+}
+
+Name
+MobileProducer::getPrefix()
+{
+  return m_postfix;
+}
+
+Name
+MobileProducer::getPostfix()
+{
+  return m_prefix;
 }
 
 
@@ -94,7 +106,7 @@ MobileProducer::PublishContent()
 
   AnnounceContent(newObject);
 
-  discoverVicinity(newObject)
+  discoverVicinity(newObject);
 
   Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent(newObject), this);
 }
@@ -110,8 +122,8 @@ MobileProducer::createContent()
 
   // Name is /producer/object<index>
   // Objects have segments /producer/object<index>/#seg
-  shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
-  newObject.append(m_postfix + objectIndex);
+  shared_ptr<Name> newObject = make_shared<Name>(getPrefix());
+  newObject.append(getPostfix() + to_string(objectIndex));
 
   // Add to the list of generated content
   m_generatedContent.push_back(newObject);

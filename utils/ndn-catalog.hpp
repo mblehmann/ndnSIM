@@ -20,13 +20,15 @@
 #ifndef NDN_NAME_SERVICE_H
 #define NDN_NAME_SERVICE_H
 
-#include <list>
-
 #include "ns3/object.h"
 
-#include "ndn-cxx/name.hpp"
+#include <ndn-cxx/name.hpp>
+#include <list>
 
 using namespace std;
+
+namespace ns3 {
+namespace ndn {
 
 class NameService : public ns3::Object
 {
@@ -45,5 +47,8 @@ private:
   //list<Nodes> m_users;
   
 };
+
+} // namespace ndn
+} // namespace ns3
 
 #endif // NDN_NAME_SERVICE_H

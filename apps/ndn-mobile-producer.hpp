@@ -27,6 +27,13 @@
 #include "ns3/traced-value.h"
 #include "util/time.hpp"
 
+#include <ndn-cxx/announcement.hpp>
+#include <ndn-cxx/hint.hpp>
+#include <ndn-cxx/vicinity.hpp>
+#include <ndn-cxx/vicinity-data.hpp>
+
+#include <util/ndn-catalog.hpp>
+
 #include <vector>
 
 using namespace std;
@@ -63,6 +70,13 @@ public:
   virtual uint32_t
   getReplicationDegree();
 
+  virtual Name
+  getPrefix();
+
+  virtual Name
+  getPostfix();
+
+
   // Publisher
   virtual void
   PublishContent();
@@ -80,13 +94,19 @@ public:
   AnnounceContent(Name object);
 
   virtual void
-  PushContent();
-
-  virtual void
   discoverVicinity();
 
   virtual void
   OnVicinityData(shared_ptr<const VicinityData> vicinityData);
+
+  virtual Name
+  PushContent();
+
+  virtual Name
+  selectDevice();
+
+  virtual Name
+  sendContent(Name device, Name object);
 
 public:
   typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
@@ -107,7 +127,7 @@ private:
   uint32_t m_replicationDegree;
 
   // Catalog of the content in the network
-  Ptr<Catalog> m_nameService;
+  Ptr<NameService> m_nameService;
 
   Ptr<UniformRandomVariable> m_rand; ///< @brief nonce generator
 
