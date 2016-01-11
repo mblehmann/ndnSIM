@@ -26,6 +26,8 @@ using namespace std;
 
 namespace ns3 {
 namespace ndn {
+	
+using ::ndn::Name;
 
 NameService::NameService()
   : m_catalog()

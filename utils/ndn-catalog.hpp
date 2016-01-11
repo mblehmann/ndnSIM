@@ -29,8 +29,10 @@ using namespace std;
 
 namespace ns3 {
 namespace ndn {
+	
+using ::ndn::Name;
 
-class NameService : public ns3::Object
+class NameService : public Object
 {
 public:
   NameService();
