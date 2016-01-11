@@ -48,8 +48,8 @@ MobileUser::GetTypeId(void)
       .SetGroupName("Ndn")
       .SetParent<App>()
       .AddConstructor<MobileUser>()
-      .AddAttribute("InterestQueue", "Queue of next interest packets to send", StringValue(),
-                    MakeNameAccessor(&MobileUser::m_interestQueue), MakeNameChecker())
+//      .AddAttribute("InterestQueue", "Queue of next interest packets to send", StringValue(),
+//                    MakeNameAccessor(&MobileUser::m_interestQueue), MakeNameChecker())
       .AddAttribute("WindowsSize", "Interest windows size", IntegerValue(0),
                     MakeIntegerAccessor(&MobileUser::m_windowsSize), MakeIntegerChecker<int32_t>());
 
@@ -134,7 +134,7 @@ MobileUser::AddInterestObject(Name objectName, uint32_t chunks)
   //for each chunk, append the sequence number and add it to the interest queue
   for (uint32_t i = 0; i < chunks; i++) {
     interestName->appendSequenceNumber(i);
-    m_interestQueue.push_back(interestName);
+    m_interestQueue.push_back(*interestName);
   }
 }
 
