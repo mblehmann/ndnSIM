@@ -47,7 +47,7 @@ MobileUser::GetTypeId(void)
       .AddAttribute("InterestQueue", "Queue of next interest packets to send", StringValue(),
                     MakeNameAccessor(&MobileUser::m_interestQueue), MakeNameChecker())
       .AddAttribute("WindowsSize", "Interest windows size", IntegerValue(0),
-                    MakeIntegerAccessor(&MobileUser::m_windowsSize), MakeIntegerChecker<int32_t>())
+                    MakeIntegerAccessor(&MobileUser::m_windowsSize), MakeIntegerChecker<int32_t>());
 
   return tid;
 }
@@ -55,28 +55,6 @@ MobileUser::GetTypeId(void)
 MobileUser::MobileUser()
   : m_windowsSize(1)
 {
-}
-
-// inherited from Application base class.
-void
-MobileUser::StartApplication()
-{
-  NS_LOG_FUNCTION_NOARGS();
-  App::StartApplication();
-
-  FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
-  ScheduleNextPacket();
-}
-
-void
-MobileUser::StopApplication()
-{
-  NS_LOG_FUNCTION_NOARGS();
-
-  // cancel periodic packet generation
-  Simulator::Cancel(m_sendEvent);
-
-  App::StopApplication();
 }
 
 /**
@@ -127,7 +105,7 @@ MobileUser::SendPacket()
  * 
  */
 void
-MobileUser::WillSendOutInterest(uint32_t sequenceNumber)
+MobileUser::WillSendOutInterest(Name objectName)
 {
 
 }
@@ -146,14 +124,14 @@ MobileUser::ScheduleNextPacket()
 void
 MobileUser::AddInterestObject(Name objectName, uint32_t chunks)
 {
-  // //create the interest name
-  // shared_ptr<Name> interestName = make_shared<Name>(objectName);
+  //create the interest name
+  shared_ptr<Name> interestName = make_shared<Name>(objectName);
 
-  // //for each chunk, append the sequence number and add it to the interest queue
-  // for (int i = 0; i < chunks; i++) {
-  //   nameWithSequence->appendSequenceNumber(seq);
-  //   m_interestQueue.add(nameWithSequence);
-  // }
+  //for each chunk, append the sequence number and add it to the interest queue
+  for (int i = 0; i < chunks; i++) {
+    interestName->appendSequenceNumber(i);
+    m_interestQueue.push_back(interestName);
+  }
 }
 
 /**

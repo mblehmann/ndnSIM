@@ -26,6 +26,10 @@
 #include "ndn-consumer.hpp"
 #include "ns3/traced-value.h"
 
+#include <list>
+
+using namespace std;
+
 namespace ns3 {
 namespace ndn {
 
@@ -56,10 +60,10 @@ public:
 
   // New methods
   virtual void
-  AddInterestObject();
+  AddInterestObject(Name objectName, uint32_t chunks);
 
   virtual void
-  ConcludeObjectDownload();
+  ConcludeObjectDownload(Name objectName);
 
 protected:
   /**
@@ -70,7 +74,7 @@ protected:
   ScheduleNextPacket();
 
 private:
-  Name[] m_interestQueue;
+  list<Name> m_interestQueue;
   uint32_t m_windowsSize;
 
   // These are the current used variables in ndn-consumer. But we have to change them to the interest queue above.
