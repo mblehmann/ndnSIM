@@ -20,6 +20,8 @@
  */
 
 #include "ndn-mobile-producer.hpp"
+#include "model/ndn-app-face.hpp"
+
 #include "ns3/ptr.h"
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -28,11 +30,6 @@
 #include "ns3/string.h"
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
-
-#include <ndn-cxx/announcement.hpp>
-#include <ndn-cxx/hint.hpp>
-#include <ndn-cxx/vicinity.hpp>
-#include <ndn-cxx/vicinity-data.hpp>
 
 using namespace std;
 
@@ -167,17 +164,16 @@ MobileProducer::discoverVicinity(Name object)
   m_vicinity.clear();
 
   // Create the vicinity packet
-//  shared_ptr<Vicinity> vicinity = make_shared<Vicinity>();
-//  vicinity->setName(object);
+  shared_ptr<Vicinity> vicinity = make_shared<Vicinity>(object);
 
   // Log information
   NS_LOG_INFO("> Vicinity discovery for " << object);
 
   // Send the packet
-//  vicinity->wireEncode();
+  vicinity->wireEncode();
 
-//  m_transmittedVicinities(vicinity, this, m_face);
-//  m_face->onReceiveVicinity(*vicinity);
+  m_transmittedVicinities(vicinity, this, m_face);
+  m_face->onReceiveVicinity(*vicinity);
 }
 
 void
@@ -211,17 +207,16 @@ void
 MobileProducer::sendContent(Name device, Name object)
 {
   // Create the vicinity packet
-//  shared_ptr<Hint> hint = make_shared<Hint>();
-//  hint.setName(object);
+  shared_ptr<Hint> hint = make_shared<Hint>(object);
 
   // Log information
   NS_LOG_INFO("> Hint to " << device << " for " << object);
 
   // Send the packet
-//  hint.wireEncode();
+  hint->wireEncode();
 
-//  m_transmittedHints(hint, this, m_face);
-//  m_face->onReceiveHint(*hint);
+  m_transmittedHints(hint, this, m_face);
+  m_face->onReceiveHint(*hint);
 }
 
 

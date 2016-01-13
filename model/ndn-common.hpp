@@ -33,6 +33,11 @@
 #include <ndn-cxx/data.hpp>
 #include <ndn-cxx/security/key-chain.hpp>
 
+#include <ndn-cxx/announcement.hpp>
+#include <ndn-cxx/hint.hpp>
+#include <ndn-cxx/vicinity.hpp>
+#include <ndn-cxx/vicinity-data.hpp>
+
 #include <ndn-cxx/util/time.hpp>
 
 namespace nfd {
@@ -62,6 +67,11 @@ using ::ndn::Signature;
 using ::ndn::SignatureInfo;
 using ::ndn::Block;
 using ::ndn::KeyChain;
+
+using ::ndn::Announcement;
+using ::ndn::Hint;
+using ::ndn::Vicinity;
+using ::ndn::VicinityData;
 
 #ifndef DOXYGEN
 // For python bindings

@@ -24,19 +24,12 @@
 #include "ns3/ndnSIM/NFD/daemon/face/local-face.hpp"
 #include "ns3/ndnSIM/model/ndn-face.hpp"
 
-#include <ndn-cxx/announcement.hpp>
-#include <ndn-cxx/hint.hpp>
-#include <ndn-cxx/vicinity.hpp>
-#include <ndn-cxx/vicinity-data.hpp>
-
 namespace ns3 {
 
 class Packet;
 class Node;
 
 namespace ndn {
-
-using ::ndn::Announcement;
 
 class App;
 
@@ -52,6 +45,7 @@ class App;
  */
 class AppFace : public nfd::LocalFace {
 public:
+
   /**
    * \brief Default constructor
    */
@@ -87,10 +81,19 @@ public: // from nfd::Face
   void
   onReceiveAnnouncement(const Announcement& announcement);
 
+  void
+  onReceiveHint(const Hint& hint);
+
+  void
+  onReceiveVicinity(const Vicinity& vicinity);
+
+  void
+  onReceiveVicinityData(const VicinityData& vicinityData);
+
   virtual void
   close();
 
-private:
+protected:
   Ptr<Node> m_node;
   Ptr<App> m_app;
 };

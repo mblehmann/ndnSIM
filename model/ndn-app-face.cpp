@@ -93,5 +93,24 @@ AppFace::onReceiveAnnouncement(const Announcement& announcement)
   this->emitSignal(onReceiveAnnouncement, announcement);
 }
 
+void
+AppFace::onReceiveHint(const Hint& hint)
+{
+  this->emitSignal(onReceiveHint, hint);
+}
+
+void
+AppFace::onReceiveVicinity(const Vicinity& vicinity)
+{
+  this->emitSignal(onReceiveVicinity, vicinity);
+}
+
+void
+AppFace::onReceiveVicinityData(const VicinityData& vicinityData)
+{
+  this->emitSignal(onReceiveVicinityData, vicinityData);
+}
+
+
 } // namespace ndn
 } // namespace ns3
