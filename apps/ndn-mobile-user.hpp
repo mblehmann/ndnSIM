@@ -26,6 +26,8 @@
 #include "ndn-consumer.hpp"
 #include "ns3/traced-value.h"
 
+#include <utils/ndn-catalog.hpp>
+
 #include <list>
 
 using namespace std;
@@ -45,6 +47,12 @@ public:
   /* Default Constructor */
   MobileUser();
 
+  virtual void
+  SetRetxTimer(Time retxTimer);
+
+  virtual void
+  CheckRetxTimeout();
+
   // From App
   virtual void
   OnData(shared_ptr<const Data> contentObject);
@@ -52,7 +60,7 @@ public:
   virtual void
   OnTimeout(Name objectName);
   
-  void
+  void 
   SendPacket();
 
   virtual void
@@ -66,6 +74,13 @@ public:
   ConcludeObjectDownload(Name objectName);
 
 protected:
+
+  virtual void
+  StartApplication();
+
+  virtual void
+  StopApplication();
+
   /**
    * \brief Constructs the Interest packet and sends it using a callback to the underlying NDN
    * protocol
@@ -75,13 +90,30 @@ protected:
 
 private:
   list<Name> m_interestQueue;
-  uint32_t m_windowsSize;
+  uint32_t m_windowSize;
+  uint32_t m_pendingInterests;
+
+  Ptr<NameService> m_nameService;
+
+  // Retransmission
+  list<Name> m_retxNames;
 
   // These are the current used variables in ndn-consumer. But we have to change them to the interest queue above.
   //uint32_t m_seq;      ///< @brief currently requested sequence number
   //uint32_t m_seqMax;   ///< @brief maximum number of sequence number
   //Name m_interestName;     ///< \brief NDN Name of the Interest (use Name)
+  
+  map<Name, Time> m_nameTimeouts;
+ 
+  map<Name, Time> m_nameLastDelay;
+  map<Name, Time> m_nameFullDelay;
+  map<Name, uint32_t> m_nameRetxCounts;
 
+  TracedCallback<Ptr<App>, Name, Time, int32_t> m_lastRetransmittedInterestDataDelay;
+  TracedCallback<Ptr<App>, Name, Time, uint32_t, int32_t> m_firstInterestDataDelay;
+ 
+  SequenceNumber32 m_chunksRetrieved;
+  map<Name, SequenceNumber32> m_chunkOrder;
 };
 
 } // namespace ndn

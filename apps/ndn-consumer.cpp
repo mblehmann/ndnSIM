@@ -112,11 +112,12 @@ Consumer::CheckRetxTimeout()
   Time now = Simulator::Now();
 
   Time rto = m_rtt->RetransmitTimeout();
-  // NS_LOG_DEBUG ("Current RTO: " << rto.ToDouble (Time::S) << "s");
+  NS_LOG_INFO ("Current RTO: " << rto.ToDouble (Time::S) << "s");
 
   while (!m_seqTimeouts.empty()) {
     SeqTimeoutsContainer::index<i_timestamp>::type::iterator entry =
       m_seqTimeouts.get<i_timestamp>().begin();
+    NS_LOG_INFO("ENTRY: " << entry->time + rto << " " << now);
     if (entry->time + rto <= now) // timeout expired?
     {
       uint32_t seqNo = entry->seq;
@@ -194,6 +195,7 @@ Consumer::SendPacket()
 
   // NS_LOG_INFO ("Requesting Interest: \n" << *interest);
   NS_LOG_INFO("> Interest for " << seq);
+  NS_LOG_INFO("> Interest for " << interest->getName());
 
   WillSendOutInterest(seq);
 

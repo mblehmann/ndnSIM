@@ -21,6 +21,7 @@
 
 #include <ndn-cxx/name.hpp>
 #include <list>
+#include <vector>
 
 using namespace std;
 
@@ -31,6 +32,7 @@ using ::ndn::Name;
 
 NameService::NameService()
   : m_catalog()
+  , m_users()
 {
 }
 
@@ -43,9 +45,14 @@ void NameService::publishContent(Name object)
   m_catalog.push_back(object);
 }
 
+/*
 void NameService::setRequests(Name object)
 {
+  for (int i = 0; i < m_users.size(); i++) {
+      Simulator::ScheduleiNow(&MobileUser::AddInterestObject, &m_users[i], &newObject, 3);
+  }
 }
+*/
 
 Name NameService::getLastObjectPublished()
 {
@@ -55,6 +62,16 @@ Name NameService::getLastObjectPublished()
 uint32_t NameService::getCatalogSize()
 {
   return m_catalog.size();
+}
+
+void NameService::addUser(Ptr<Node> user)
+{
+  m_users.push_back(user);
+}
+
+vector<Ptr<Node>> NameService::getUsers()
+{
+  return m_users;
 }
 
 } // namespace ndn

@@ -111,14 +111,14 @@ protected:
   /**
    * \brief Checks if the packet need to be retransmitted becuase of retransmission timer expiration
    */
-  void
+  virtual void
   CheckRetxTimeout();
 
   /**
    * \brief Modifies the frequency of checking the retransmission timeouts
    * \param retxTimer Timeout defining how frequent retransmission timeouts should be checked
    */
-  void
+  virtual void
   SetRetxTimer(Time retxTimer);
 
   /**

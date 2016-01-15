@@ -22,8 +22,12 @@
 
 #include "ns3/object.h"
 
+#include "ns3/core-module.h"
+#include "ns3/network-module.h"
+
 #include <ndn-cxx/name.hpp>
 #include <list>
+#include <vector>
 
 using namespace std;
 
@@ -44,9 +48,12 @@ public:
   Name getLastObjectPublished();
   uint32_t getCatalogSize();
 
+  void addUser(Ptr<Node> user);
+  vector<Ptr<Node>> getUsers();
+
 private:
   list<Name> m_catalog;
-  //list<Nodes> m_users;
+  vector<Ptr<Node>> m_users;
   
 };
 

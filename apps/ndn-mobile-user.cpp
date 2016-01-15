@@ -28,6 +28,10 @@
 #include "ns3/string.h"
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
+#include "ns3/pointer.h"
+
+#include "utils/ndn-ns3-packet-tag.hpp"
+#include "utils/ndn-rtt-mean-deviation.hpp"
  
 #include <list>
 
@@ -46,20 +50,98 @@ MobileUser::GetTypeId(void)
   static TypeId tid =
     TypeId("ns3::ndn::MobileUser")
       .SetGroupName("Ndn")
-      .SetParent<App>()
+      .SetParent<Consumer>()
       .AddConstructor<MobileUser>()
-//      .AddAttribute("InterestQueue", "Queue of next interest packets to send", StringValue(),
-//                    MakeNameAccessor(&MobileUser::m_interestQueue), MakeNameChecker())
-      .AddAttribute("WindowsSize", "Interest windows size", IntegerValue(0),
-                    MakeIntegerAccessor(&MobileUser::m_windowsSize), MakeIntegerChecker<int32_t>());
-
+      .AddAttribute("WindowSize", "Interest window size", IntegerValue(0),
+                    MakeIntegerAccessor(&MobileUser::m_windowSize), MakeIntegerChecker<int32_t>())
+      .AddAttribute("NameService", "Name service to discover content", PointerValue(NULL), MakePointerAccessor(&MobileUser::m_nameService),
+                   MakePointerChecker<NameService>());
   return tid;
 }
 
 MobileUser::MobileUser()
-  : m_windowsSize(1)
+  : m_windowSize(1)
+  , m_pendingInterests(0)
+  , m_chunksRetrieved(0)
 {
+  NS_LOG_FUNCTION_NOARGS();
+
+  m_rtt = CreateObject<RttMeanDeviation>();
 }
+
+// Application Methods
+void
+MobileUser::StartApplication() // Called at time specified by Start
+{
+  NS_LOG_FUNCTION_NOARGS();
+
+  // do base stuff
+  App::StartApplication();
+
+  NS_LOG_INFO("> Waiting to discover an object");
+}
+
+void
+MobileUser::StopApplication() // Called at time specified by Stop
+{
+  NS_LOG_FUNCTION_NOARGS();
+
+  // cancel periodic packet generation
+  Simulator::Cancel(m_sendEvent);
+
+  // cleanup base stuff
+  App::StopApplication();
+}
+
+void
+MobileUser::SetRetxTimer(Time retxTimer)
+{
+  m_retxTimer = retxTimer;
+  if (m_retxEvent.IsRunning()) {
+    // m_retxEvent.Cancel (); // cancel any scheduled cleanup events
+    Simulator::Remove(m_retxEvent); // slower, but better for memory
+  }
+
+  // schedule even with new timeout
+  m_retxEvent = Simulator::Schedule(m_retxTimer, &MobileUser::CheckRetxTimeout, this);
+}
+
+void
+MobileUser::CheckRetxTimeout()
+{
+  Time now = Simulator::Now();
+
+  Time rto = m_rtt->RetransmitTimeout();
+  
+  Name entryName;
+  Time entryTime;
+
+  while (!m_nameTimeouts.empty()) {
+    entryName = m_nameTimeouts.begin()->first;
+    entryTime = m_nameTimeouts.begin()->second;
+    
+    for (map<Name, Time>::iterator it=m_nameTimeouts.begin(); it!=m_nameTimeouts.end(); ++it)
+    {
+      if (it->second < entryTime)
+      {
+        entryName = it->first;
+        entryTime = it->second;
+      }   
+    }
+
+    if (entryTime + rto <= now)
+    {
+      Name expiredInterest = entryName;
+      m_nameTimeouts.erase(entryName);
+      OnTimeout(expiredInterest);
+    }
+    else
+      break; // nothing else to do. All later packets need not be retransmitted
+  }
+
+  m_retxEvent = Simulator::Schedule(m_retxTimer, &MobileUser::CheckRetxTimeout, this);
+}
+
 
 /**
  * Receives the data.
@@ -70,21 +152,51 @@ MobileUser::MobileUser()
 void
 MobileUser::OnData(shared_ptr<const Data> data)
 {
+
   // // Do the regular processing
-  // Consumer::OnData(data);
-  // objectName = data->getName()
+  App::OnData(data); // tracing inside
+  NS_LOG_FUNCTION(this << data);
 
-  // // Reduce the number of pending interest requests
-  // m_windowsSize--;
+  //Consumer::OnData(data);
+  Name objectName = data->getName();
+  NS_LOG_INFO("> Data for " << objectName);
 
-  // // Remove the interest from the packet queue
-  // m_interestQueue.remove(objectName);
+  // Reduce the number of pending interest requests
+  m_pendingInterests--;
 
-  // // Check if it is the last chunk
+  // Remove the interest from the packet queue
+  m_interestQueue.remove(objectName);
+
+  // Check if it is the last chunk
   // ConcludeObjectDownload(objectName)
 
-  // // Schedules next packets
-  // ScheduleNextPacket();
+  int hopCount = 0;
+  auto ns3PacketTag = data->getTag<Ns3PacketTag>();
+  if (ns3PacketTag != nullptr) { // e.g., packet came from local node's cache
+    FwHopCountTag hopCountTag;
+    if (ns3PacketTag->getPacket()->PeekPacketTag(hopCountTag)) {
+      hopCount = hopCountTag.Get();
+      NS_LOG_DEBUG("Hop count: " << hopCount);
+    }
+  }
+
+  Time lastDelay = m_nameLastDelay[objectName];
+  m_lastRetransmittedInterestDataDelay(this, objectName, Simulator::Now() - lastDelay, hopCount);
+
+  Time fullDelay = m_nameFullDelay[objectName];
+  m_firstInterestDataDelay(this, objectName, Simulator::Now() - fullDelay, m_nameRetxCounts[objectName], hopCount);
+
+  m_nameRetxCounts.erase(objectName);
+  m_nameFullDelay.erase(objectName);
+  m_nameLastDelay.erase(objectName);
+
+  m_nameTimeouts.erase(objectName);
+  m_retxNames.remove(objectName);
+
+  m_rtt->AckSeq(m_chunkOrder[objectName]);
+
+  // Schedules next packets
+  ScheduleNextPacket();
 }
 
 /**
@@ -93,7 +205,17 @@ MobileUser::OnData(shared_ptr<const Data> data)
 void
 MobileUser::OnTimeout(Name objectName)
 {
+  NS_LOG_FUNCTION(objectName);
+  std::cout << Simulator::Now () << ", TO: " << objectName << ", current RTO: " <<
+   m_rtt->RetransmitTimeout ().ToDouble (Time::S) << "s\n";
 
+  m_rtt->IncreaseMultiplier(); // Double the next RTO
+  m_rtt->SentSeq(m_chunkOrder[objectName],
+                 1); // make sure to disable RTT calculation for this sample
+  m_retxNames.push_back(objectName);
+  m_pendingInterests--;
+
+  ScheduleNextPacket();
 }
 
 /**
@@ -102,7 +224,38 @@ MobileUser::OnTimeout(Name objectName)
 void
 MobileUser::SendPacket()
 {
+  Name object;
 
+  if (!m_active) 
+    return;
+
+  if (m_retxNames.size() > 0) {
+    object = m_retxNames.front();
+    m_retxNames.pop_front();
+  }
+  else if (m_interestQueue.size() > 0) {
+    object = m_interestQueue.front();
+    m_interestQueue.pop_front();
+  }
+  else {
+    return;
+  }
+
+  shared_ptr<Interest> interest = make_shared<Interest>();
+  interest->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
+  interest->setName(object);
+  time::milliseconds interestLifeTime(m_interestLifeTime.GetMilliSeconds());
+  interest->setInterestLifetime(interestLifeTime);
+
+  // NS_LOG_INFO ("Requesting Interest: \n" << *interest);
+  NS_LOG_INFO("> Interest for " << interest->getName());
+
+  WillSendOutInterest(object);
+
+  m_transmittedInterests(interest, this, m_face);
+  m_face->onReceiveInterest(*interest);
+
+  m_pendingInterests++;
 }
 
 /**
@@ -111,7 +264,18 @@ MobileUser::SendPacket()
 void
 MobileUser::WillSendOutInterest(Name objectName)
 {
+  NS_LOG_DEBUG("Trying to add " << objectName << " with " << Simulator::Now() << ". already "
+                                << m_nameTimeouts.size() << " items");
 
+  m_nameTimeouts[objectName] = Simulator::Now();
+  m_nameFullDelay[objectName] = Simulator::Now();
+
+  m_nameLastDelay.erase(objectName);
+  m_nameLastDelay[objectName] = Simulator::Now();
+
+  m_nameRetxCounts[objectName]++;
+
+  m_rtt->SentSeq(m_chunkOrder[objectName], 1);
 }
 
 /**
@@ -120,6 +284,16 @@ MobileUser::WillSendOutInterest(Name objectName)
 void
 MobileUser::ScheduleNextPacket()
 {
+  if (m_interestQueue.size() > 0) {
+    NS_LOG_INFO("> Scheduling next packet");
+
+    while (m_pendingInterests < m_windowSize) {
+      //Simulator::ScheduleNow(&Consumer::SendPacket, this);
+      //Simulator::ScheduleNow(&MobileUser::SendPacket, this);
+      SendPacket();
+    }
+  }
+
 }
 
 /**
@@ -128,14 +302,24 @@ MobileUser::ScheduleNextPacket()
 void
 MobileUser::AddInterestObject(Name objectName, uint32_t chunks)
 {
+  NS_LOG_INFO("> Adding Interest for object " << objectName << "/" << chunks);
+
+  m_seqMax = 7;
   //create the interest name
-  shared_ptr<Name> interestName = make_shared<Name>(objectName);
+  shared_ptr<Name> interestName;
 
   //for each chunk, append the sequence number and add it to the interest queue
   for (uint32_t i = 0; i < chunks; i++) {
+    interestName = make_shared<Name>(objectName);
     interestName->appendSequenceNumber(i);
     m_interestQueue.push_back(*interestName);
   }
+  
+  NS_LOG_INFO("> Chunk " << m_interestQueue.back());
+  NS_LOG_INFO("> Chunk " << m_interestQueue.front());
+
+  Simulator::Schedule(Time("2s"), &MobileUser::ScheduleNextPacket, this);
+
 }
 
 /**

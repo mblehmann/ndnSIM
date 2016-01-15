@@ -20,6 +20,8 @@
  */
 
 #include "ndn-mobile-producer.hpp"
+#include "ndn-mobile-user.hpp"
+#include "ndn-producer.hpp"
 #include "model/ndn-app-face.hpp"
 
 #include "ns3/ptr.h"
@@ -30,6 +32,9 @@
 #include "ns3/string.h"
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
+#include "ns3/pointer.h"
+
+#include "helper/ndn-fib-helper.hpp"
 
 using namespace std;
 
@@ -46,16 +51,50 @@ MobileProducer::GetTypeId(void)
   static TypeId tid =
     TypeId("ns3::ndn::MobileProducer")
       .SetGroupName("Ndn")
-      .SetParent<App>()
-      .AddConstructor<MobileProducer>();
+      .SetParent<Producer>()
+      .AddConstructor<MobileProducer>()
+
+      .AddAttribute("VicinityTimer", "Period to discover vicinity",
+                   StringValue("10s"), MakeTimeAccessor(&MobileProducer::m_vicinityTimer), MakeTimeChecker())
+
+      .AddAttribute("NameService", "Name service to discover content",
+                   PointerValue(NULL),
+                   MakePointerAccessor(&MobileProducer::m_nameService),
+                   MakePointerChecker<NameService>());
 
   return tid;
 }
 
 MobileProducer::MobileProducer()
+  : m_rand(CreateObject<UniformRandomVariable>())
 {
+  NS_LOG_FUNCTION_NOARGS();
 }
 
+// Application Methods
+void
+MobileProducer::StartApplication() // Called at time specified by Start
+{
+  NS_LOG_FUNCTION_NOARGS();
+  Producer::StartApplication();
+
+//  App::StartApplication();
+//  FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
+
+  NS_LOG_INFO("> Starting the producer");
+
+  Simulator::Schedule(Time("1s"), &MobileProducer::PublishContent, this);
+}
+
+/*
+void
+MobileProducer::OnInterest(shared_ptr<const Interest> interest)
+{
+  App::OnInterest(interest); // tracing inside
+
+  NS_LOG_FUNCTION(this << interest);
+}
+*/
 void
 MobileProducer::setVicinityTimer(Time vicinityTimer)
 {
@@ -68,8 +107,6 @@ MobileProducer::setReplicationDegree(uint32_t replicationDegree)
   m_replicationDegree = replicationDegree;
 }
 
-
-
 /**
  * Create a new content.
  * Sets it popularity through advertisement.
@@ -77,6 +114,8 @@ MobileProducer::setReplicationDegree(uint32_t replicationDegree)
 void
 MobileProducer::PublishContent()
 {
+  NS_LOG_INFO("> Publishing a new object");
+
   Name newObject = createContent();
 
   // Advertise the new content
@@ -88,6 +127,7 @@ MobileProducer::PublishContent()
 
   // scheduling events!!
   Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent, this, &newObject);
+
 }
 
 /**
@@ -102,8 +142,8 @@ MobileProducer::createContent()
   // Name is /producer/object<index>
   // Objects have segments /producer/object<index>/#seg
   shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
-  newObject->append(m_postfix);
-  newObject->append(to_string(objectIndex));
+  //newObject->append(m_postfix);
+  //newObject->append(to_string(objectIndex));
 
   // Add to the list of generated content
   m_generatedContent.push_back(*newObject);
@@ -120,7 +160,21 @@ void
 MobileProducer::advertiseContent(Name newObject)
 {
   m_nameService->publishContent(newObject);
-  m_nameService->setRequests(newObject);
+  uint32_t chunks = 7;
+
+  vector<Ptr<Node>> users = m_nameService->getUsers();
+  Ptr<Node> currentUser;
+  Ptr<MobileUser> mobileUser;
+  for (uint32_t i = 0; i < users.size(); i++) {
+    Ptr<Node> currentUser = users[i];
+    Ptr<MobileUser> mobileUser = DynamicCast<MobileUser> (currentUser->GetApplication(0));
+    //Simulator::ScheduleNow(&MobileUser::AddInterestObject, &newObject, 3);
+    //Simulator::ScheduleNow(&MobileUser::AddInterestObject, &users[i], &newObject, 3);
+    //Simulator::ScheduleNow(&MobileUser::AddInterestObject, dynamic_cast<MobileUser*>(&users[i]->GetApplication(0)), &newObject, 3);
+    Simulator::ScheduleWithContext(currentUser->GetId(), Time("0s"), &MobileUser::AddInterestObject, mobileUser, newObject, chunks);
+  }
+
+  NS_LOG_INFO("> Advertising object " << newObject);
 }
 
 /**
@@ -143,6 +197,9 @@ MobileProducer::AnnounceContent(Name object)
 {
   // Create the announcement packet
   shared_ptr<Announcement> announcement = make_shared<Announcement>(object);
+  NS_LOG_INFO("> Creating the announcement for object " << object);
+  
+  NS_LOG_INFO("> Generating the Nonce " << m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
   announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
 
   // Log information
@@ -165,6 +222,7 @@ MobileProducer::discoverVicinity(Name object)
 
   // Create the vicinity packet
   shared_ptr<Vicinity> vicinity = make_shared<Vicinity>(object);
+  NS_LOG_INFO("> Discovering the vicinity for object " << object);
 
   // Log information
   NS_LOG_INFO("> Vicinity discovery for " << object);
@@ -188,11 +246,18 @@ MobileProducer::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
 void
 MobileProducer::PushContent(Name* object)
 {
-  Name device;
+  NS_LOG_INFO("> Pushing the object " << object);
 
-  for (uint32_t i = 0; i < m_replicationDegree; i++) {
-    device = selectDevice();
-    sendContent(device, *object);
+  if (m_vicinity.size() > 0) {
+
+    Name device;
+
+
+    for (uint32_t i = 0; i < m_replicationDegree; i++) {
+      device = selectDevice();
+      sendContent(device, *object);
+    }
+    NS_LOG_INFO("> Pushing the object " << object);
   }
 }
 
