@@ -115,6 +115,34 @@ App::OnData(shared_ptr<const Data> data)
   m_receivedDatas(data, this, m_face);
 }
 
+void
+App::OnAnnouncement(shared_ptr<const Announcement> announcement)
+{
+  NS_LOG_FUNCTION(this << announcement);
+  m_receivedAnnouncements(announcement, this, m_face);
+}
+
+void
+App::OnHint(shared_ptr<const Hint> hint)
+{
+  NS_LOG_FUNCTION(this << hint);
+  m_receivedHints(hint, this, m_face);
+}
+
+void
+App::OnVicinity(shared_ptr<const Vicinity> vicinity)
+{
+  NS_LOG_FUNCTION(this << vicinity);
+  m_receivedVicinities(vicinity, this, m_face);
+}
+
+void
+App::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
+{
+  NS_LOG_FUNCTION(this << vicinityData);
+  m_receivedVicinityDatas(vicinityData, this, m_face);
+}
+
 // Application Methods
 void
 App::StartApplication() // Called at time specified by Start

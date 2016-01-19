@@ -111,6 +111,50 @@ NetDeviceFace::sendData(const Data& data)
   send(packet);
 }
 
+void
+NetDeviceFace::sendAnnouncement(const Announcement& announcement)
+{
+  NS_LOG_FUNCTION(this << &announcement);
+
+  this->emitSignal(onSendAnnouncement, announcement);
+
+  Ptr<Packet> packet = Convert::ToPacket(announcement);
+  send(packet);
+}
+
+void
+NetDeviceFace::sendHint(const Hint& hint)
+{
+  NS_LOG_FUNCTION(this << &hint);
+
+  this->emitSignal(onSendHint, hint);
+
+  Ptr<Packet> packet = Convert::ToPacket(hint);
+  send(packet);
+}
+
+void
+NetDeviceFace::sendVicinity(const Vicinity& vicinity)
+{
+  NS_LOG_FUNCTION(this << &vicinity);
+
+  this->emitSignal(onSendVicinity, vicinity);
+
+  Ptr<Packet> packet = Convert::ToPacket(vicinity);
+  send(packet);
+}
+
+void
+NetDeviceFace::sendVicinityData(const VicinityData& vicinityData)
+{
+  NS_LOG_FUNCTION(this << &vicinityData);
+
+  this->emitSignal(onSendVicinityData, vicinityData);
+
+  Ptr<Packet> packet = Convert::ToPacket(vicinityData);
+  send(packet);
+}
+
 // callback
 void
 NetDeviceFace::receiveFromNetDevice(Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t protocol,
@@ -125,6 +169,22 @@ NetDeviceFace::receiveFromNetDevice(Ptr<NetDevice> device, Ptr<const Packet> p, 
     if (type == ::ndn::tlv::Interest) {
       shared_ptr<const Interest> i = Convert::FromPacket<Interest>(packet);
       this->emitSignal(onReceiveInterest, *i);
+    }
+    else if (type == ::ndn::tlv::Announcement) {
+      shared_ptr<const Announcement> a = Convert::FromPacket<Announcement>(packet);
+      this->emitSignal(onReceiveAnnouncement, *a);
+    }
+    else if (type == ::ndn::tlv::Hint) {
+      shared_ptr<const Hint> h = Convert::FromPacket<Hint>(packet);
+      this->emitSignal(onReceiveHint, *h);
+    }
+    else if (type == ::ndn::tlv::Vicinity) {
+      shared_ptr<const Vicinity> v = Convert::FromPacket<Vicinity>(packet);
+      this->emitSignal(onReceiveVicinity, *v);
+    }
+    else if (type == ::ndn::tlv::VicinityData) {
+      shared_ptr<const VicinityData> vd = Convert::FromPacket<VicinityData>(packet);
+      this->emitSignal(onReceiveVicinityData, *vd);
     }
     else if (type == ::ndn::tlv::Data) {
       shared_ptr<const Data> d = Convert::FromPacket<Data>(packet);

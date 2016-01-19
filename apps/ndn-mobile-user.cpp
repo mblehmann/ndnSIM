@@ -333,6 +333,37 @@ MobileUser::ConcludeObjectDownload(Name objectName)
   // }
 }
 
+void
+MobileUser::OnAnnouncement(shared_ptr<const Announcement> announcement)
+{
+  App::OnAnnouncement(announcement); 
+
+  NS_LOG_INFO("> LE ANNOUNCEMENT");
+}
+
+void
+MobileUser::OnHint(shared_ptr<const Hint> hint)
+{
+  App::OnHint(hint);
+
+  NS_LOG_INFO("> LE HINT");
+}
+
+void
+MobileUser::OnVicinity(shared_ptr<const Vicinity> vicinity)
+{
+  App::OnVicinity(vicinity);
+
+  NS_LOG_INFO("> LE VICINITY");
+}
+
+void
+MobileUser::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
+{
+  App::OnVicinityData(vicinityData);
+
+  NS_LOG_INFO("> LE VICINITY DATA");
+}
 
 } // namespace ndn
 } // namespace ns3

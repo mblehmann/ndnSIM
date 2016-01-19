@@ -76,6 +76,50 @@ AppFace::sendData(const Data& data)
 }
 
 void
+AppFace::sendAnnouncement(const Announcement& announcement)
+{
+  NS_LOG_FUNCTION(this << &announcement);
+
+  this->emitSignal(onSendAnnouncement, announcement);
+
+  // to decouple callbacks
+  Simulator::ScheduleNow(&App::OnAnnouncement, m_app, announcement.shared_from_this());
+}
+
+void
+AppFace::sendHint(const Hint& hint)
+{
+  NS_LOG_FUNCTION(this << &hint);
+
+  this->emitSignal(onSendHint, hint);
+
+  // to decouple callbacks
+  Simulator::ScheduleNow(&App::OnHint, m_app, hint.shared_from_this());
+}
+
+void
+AppFace::sendVicinity(const Vicinity& vicinity)
+{
+  NS_LOG_FUNCTION(this << &vicinity);
+
+  this->emitSignal(onSendVicinity, vicinity);
+
+  // to decouple callbacks
+  Simulator::ScheduleNow(&App::OnVicinity, m_app, vicinity.shared_from_this());
+}
+
+void
+AppFace::sendVicinityData(const VicinityData& vicinityData)
+{
+  NS_LOG_FUNCTION(this << &vicinityData);
+
+  this->emitSignal(onSendVicinityData, vicinityData);
+
+  // to decouple callbacks
+  Simulator::ScheduleNow(&App::OnVicinityData, m_app, vicinityData.shared_from_this());
+}
+
+void
 AppFace::onReceiveInterest(const Interest& interest)
 {
   this->emitSignal(onReceiveInterest, interest);
@@ -90,24 +134,36 @@ AppFace::onReceiveData(const Data& data)
 void
 AppFace::onReceiveAnnouncement(const Announcement& announcement)
 {
+  NS_LOG_INFO("> ANNOUNCEMENT!!");
+
+  NS_LOG_FUNCTION(this << &announcement);
   this->emitSignal(onReceiveAnnouncement, announcement);
 }
 
 void
 AppFace::onReceiveHint(const Hint& hint)
 {
+  NS_LOG_INFO("> HINT!!");
+
+  NS_LOG_FUNCTION(this << &hint);
   this->emitSignal(onReceiveHint, hint);
 }
 
 void
 AppFace::onReceiveVicinity(const Vicinity& vicinity)
 {
+  NS_LOG_INFO("> VICINITY!!");
+
+  NS_LOG_FUNCTION(this << &vicinity);
   this->emitSignal(onReceiveVicinity, vicinity);
 }
 
 void
 AppFace::onReceiveVicinityData(const VicinityData& vicinityData)
 {
+  NS_LOG_INFO("> VICINITY DATA!!");
+
+  NS_LOG_FUNCTION(this << &vicinityData);
   this->emitSignal(onReceiveVicinityData, vicinityData);
 }
 

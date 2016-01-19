@@ -63,6 +63,18 @@ public: // from nfd::Face
   sendData(const Data& data);
 
   virtual void
+  sendAnnouncement(const Announcement& announcement);
+
+  virtual void
+  sendHint(const Hint& hint);
+
+  virtual void
+  sendVicinity(const Vicinity& vicinity);
+
+  virtual void
+  sendVicinityData(const VicinityData& vicinityData);
+
+  virtual void
   close();
 
 public:

@@ -73,6 +73,18 @@ public:
   virtual void
   ConcludeObjectDownload(Name objectName);
 
+  virtual void
+  OnAnnouncement(shared_ptr<const Announcement> announcement);
+
+  virtual void
+  OnHint(shared_ptr<const Hint> hint);
+
+  virtual void
+  OnVicinity(shared_ptr<const Vicinity> vicinity);
+
+  virtual void
+  OnVicinityData(shared_ptr<const VicinityData> vicinityData);
+
 protected:
 
   virtual void

@@ -26,6 +26,8 @@
 #include "ndn-header.hpp"
 #include "../utils/ndn-ns3-packet-tag.hpp"
 
+#include <iostream>
+
 namespace ns3 {
 namespace ndn {
 
@@ -47,6 +49,18 @@ Convert::FromPacket<Interest>(Ptr<Packet> packet);
 
 template std::shared_ptr<const Data>
 Convert::FromPacket<Data>(Ptr<Packet> packet);
+
+template std::shared_ptr<const Announcement>
+Convert::FromPacket<Announcement>(Ptr<Packet> packet);
+
+template std::shared_ptr<const Hint>
+Convert::FromPacket<Hint>(Ptr<Packet> packet);
+
+template std::shared_ptr<const Vicinity>
+Convert::FromPacket<Vicinity>(Ptr<Packet> packet);
+
+template std::shared_ptr<const VicinityData>
+Convert::FromPacket<VicinityData>(Ptr<Packet> packet);
 
 template<class T>
 Ptr<Packet>
@@ -74,6 +88,18 @@ Convert::ToPacket<Interest>(const Interest& packet);
 template Ptr<Packet>
 Convert::ToPacket<Data>(const Data& packet);
 
+template Ptr<Packet>
+Convert::ToPacket<Announcement>(const Announcement& packet);
+
+template Ptr<Packet>
+Convert::ToPacket<Hint>(const Hint& packet);
+
+template Ptr<Packet>
+Convert::ToPacket<Vicinity>(const Vicinity& packet);
+
+template Ptr<Packet>
+Convert::ToPacket<VicinityData>(const VicinityData& packet);
+
 uint32_t
 Convert::getPacketType(Ptr<const Packet> packet)
 {
@@ -83,7 +109,9 @@ Convert::getPacketType(Ptr<const Packet> packet)
     throw ::ndn::tlv::Error("Unknown header");
   }
 
-  if (type == ::ndn::tlv::Interest || type == ::ndn::tlv::Data) {
+  if (type == ::ndn::tlv::Interest || type == ::ndn::tlv::Data
+   || type == ::ndn::tlv::Announcement || type == ::ndn::tlv::Hint
+   || type == ::ndn::tlv::Vicinity || type == ::ndn::tlv::VicinityData) {
     return type;
   }
   else {
