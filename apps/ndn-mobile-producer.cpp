@@ -54,6 +54,9 @@ MobileProducer::GetTypeId(void)
       .SetParent<Producer>()
       .AddConstructor<MobileProducer>()
 
+      .AddAttribute("ReplicationDegree", "Number of replicas pushed",
+                   UintegerValue(1), MakeUintegerAccessor(&MobileProducer::m_replicationDegree), MakeUintegerChecker<uint32_t>())
+
       .AddAttribute("VicinityTimer", "Period to discover vicinity",
                    StringValue("10s"), MakeTimeAccessor(&MobileProducer::m_vicinityTimer), MakeTimeChecker())
 
@@ -125,8 +128,10 @@ MobileProducer::PublishContent()
 
   discoverVicinity(newObject);
 
+  m_pushedObjects.push(newObject);
+
   // scheduling events!!
-  Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent, this, &newObject);
+  Simulator::Schedule(m_vicinityTimer, &MobileProducer::PushContent, this);
 
 }
 
@@ -143,7 +148,7 @@ MobileProducer::createContent()
   // Objects have segments /producer/object<index>/#seg
   shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
   //newObject->append(m_postfix);
-  //newObject->append(to_string(objectIndex));
+  newObject->append(to_string(objectIndex));
 
   // Add to the list of generated content
   m_generatedContent.push_back(*newObject);
@@ -237,31 +242,38 @@ MobileProducer::discoverVicinity(Name object)
 void
 MobileProducer::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
 {
-  m_vicinity.push_back(vicinityData->getName());
+  Name objectName = vicinityData->getName();
+  int remoteNode = vicinityData->getNodeID();
+  NS_LOG_INFO("> Vicinity data response RECEIVED from " << remoteNode << " for " << objectName);
+
+  m_vicinity.push_back(remoteNode);
 }
 
 /**
  * Execute the whole push content operation
  */
 void
-MobileProducer::PushContent(Name* object)
+MobileProducer::PushContent()
 {
-  NS_LOG_INFO("> Pushing the object " << object);
+  Name objectName = m_pushedObjects.front();
+  m_pushedObjects.pop();
+
+  NS_LOG_INFO("> Pushing the object " << objectName);
 
   if (m_vicinity.size() > 0) {
 
-    Name device;
-
+    NS_LOG_INFO("> We have neighbours " << m_vicinity.size());
+    int deviceID;
 
     for (uint32_t i = 0; i < m_replicationDegree; i++) {
-      device = selectDevice();
-      sendContent(device, *object);
+      deviceID = selectDevice();
+      NS_LOG_INFO("> Selected device " << deviceID);
+      sendContent(deviceID, objectName);
     }
-    NS_LOG_INFO("> Pushing the object " << object);
   }
 }
 
-Name
+int
 MobileProducer::selectDevice()
 {
   int position = m_rand->GetValue(0, m_vicinity.size());
@@ -269,19 +281,30 @@ MobileProducer::selectDevice()
 }
 
 void
-MobileProducer::sendContent(Name device, Name object)
+MobileProducer::sendContent(int deviceID, Name objectName)
 {
+  NS_LOG_INFO("> Sending " << objectName << " to " << deviceID);
   // Create the vicinity packet
-  shared_ptr<Hint> hint = make_shared<Hint>(object);
+  shared_ptr<Hint> hint = make_shared<Hint>(objectName);
+  hint->setNodeID(deviceID);
+  hint->setScope(2);
 
   // Log information
-  NS_LOG_INFO("> Hint to " << device << " for " << object);
+  NS_LOG_INFO("> Hint to " << deviceID << " for " << objectName);
 
   // Send the packet
   hint->wireEncode();
 
   m_transmittedHints(hint, this, m_face);
   m_face->onReceiveHint(*hint);
+}
+
+void
+MobileProducer::OnAnnouncement(shared_ptr<const Announcement> announcement)
+{
+  App::OnAnnouncement(announcement);
+
+  NS_LOG_INFO("> LE ANNOUNCEMENT");
 }
 
 

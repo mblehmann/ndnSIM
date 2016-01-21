@@ -162,13 +162,40 @@ MobileUser::OnData(shared_ptr<const Data> data)
   NS_LOG_INFO("> Data for " << objectName);
 
   // Reduce the number of pending interest requests
+  m_pendingObjects.remove(objectName);
   m_pendingInterests--;
 
-  // Remove the interest from the packet queue
-  m_interestQueue.remove(objectName);
-
   // Check if it is the last chunk
-  // ConcludeObjectDownload(objectName)
+  Name objectPrefix = objectName.getSubName(0, 2);
+  Name pendingPrefix;
+  bool concluded = true;
+
+  for (uint32_t i = 0; i < m_interestQueue.size() && concluded; i++) {
+    pendingPrefix = m_interestQueue[i].getSubName(0, 2);
+    if (objectPrefix == pendingPrefix) {
+      concluded = false;
+      break;
+    } 
+  }
+
+  for (list<Name>::iterator it = m_pendingObjects.begin(); it != m_pendingObjects.end() && concluded; ++it) {
+    pendingPrefix = it->getSubName(0, 2);
+    if (objectPrefix == pendingPrefix) {
+      concluded = false;
+      break;
+    } 
+  }
+
+  for (uint32_t i = 0; i < m_retxNames.size() && concluded; i++) {
+    pendingPrefix = m_retxNames[i].getSubName(0, 2);
+    if (objectPrefix == pendingPrefix) {
+      concluded = false;
+      break;
+    } 
+  }
+
+  if (concluded)
+    ConcludeObjectDownload(objectPrefix);
 
   int hopCount = 0;
   auto ns3PacketTag = data->getTag<Ns3PacketTag>();
@@ -191,7 +218,6 @@ MobileUser::OnData(shared_ptr<const Data> data)
   m_nameLastDelay.erase(objectName);
 
   m_nameTimeouts.erase(objectName);
-  m_retxNames.remove(objectName);
 
   m_rtt->AckSeq(m_chunkOrder[objectName]);
 
@@ -213,6 +239,8 @@ MobileUser::OnTimeout(Name objectName)
   m_rtt->SentSeq(m_chunkOrder[objectName],
                  1); // make sure to disable RTT calculation for this sample
   m_retxNames.push_back(objectName);
+  
+  m_pendingObjects.remove(objectName);
   m_pendingInterests--;
 
   ScheduleNextPacket();
@@ -231,11 +259,11 @@ MobileUser::SendPacket()
 
   if (m_retxNames.size() > 0) {
     object = m_retxNames.front();
-    m_retxNames.pop_front();
+    m_retxNames.erase(m_retxNames.begin());
   }
   else if (m_interestQueue.size() > 0) {
     object = m_interestQueue.front();
-    m_interestQueue.pop_front();
+    m_interestQueue.erase(m_interestQueue.begin());
   }
   else {
     return;
@@ -255,6 +283,7 @@ MobileUser::SendPacket()
   m_transmittedInterests(interest, this, m_face);
   m_face->onReceiveInterest(*interest);
 
+  m_pendingObjects.push_back(interest->getName());
   m_pendingInterests++;
 }
 
@@ -328,9 +357,34 @@ MobileUser::AddInterestObject(Name objectName, uint32_t chunks)
 void
 MobileUser::ConcludeObjectDownload(Name objectName)
 {
-  // if (m_interestQueue.isLastChunk(objectName)) {
-  //   NS_LOG_INFO("Finished Dowlonading:" << objectName);
-  // }
+  NS_LOG_INFO("Finished Dowlonading:" << objectName);
+
+  for (uint32_t i = 0; i < m_providedObjects.size(); i++) {
+    if (objectName == m_providedObjects[i]) {
+      AnnounceContent(objectName);
+      break;
+    }
+  }
+}
+
+void
+MobileUser::AnnounceContent(Name object)
+{
+  // Create the announcement packet
+  shared_ptr<Announcement> announcement = make_shared<Announcement>(object);
+  NS_LOG_INFO("> Creating the announcement for object " << object);
+
+  NS_LOG_INFO("> Generating the Nonce " << m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
+  announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
+
+  // Log information
+  NS_LOG_INFO("> Announcement for " << object);
+
+  // Send the packet
+  announcement->wireEncode();
+
+  m_transmittedAnnouncements(announcement, this, m_face);
+  m_face->onReceiveAnnouncement(*announcement);
 }
 
 void
@@ -346,7 +400,20 @@ MobileUser::OnHint(shared_ptr<const Hint> hint)
 {
   App::OnHint(hint);
 
-  NS_LOG_INFO("> LE HINT");
+  Name objectName = hint->getName();
+  int nodeID = hint->getNodeID();
+
+  NS_LOG_INFO("> Numbers: " << nodeID << " " << this->GetId());
+
+  if (nodeID == this->GetId()) {
+    NS_LOG_INFO("> Received hint for object " << objectName);
+
+    uint32_t chunks = 7;
+
+    AddInterestObject(objectName, chunks);
+    m_providedObjects.push_back(objectName);
+  }
+
 }
 
 void
@@ -354,7 +421,23 @@ MobileUser::OnVicinity(shared_ptr<const Vicinity> vicinity)
 {
   App::OnVicinity(vicinity);
 
-  NS_LOG_INFO("> LE VICINITY");
+  Name objectName = vicinity->getName();
+  NS_LOG_INFO("> Received vicinity probe for object " << vicinity << " " << objectName);
+
+  // Create the vicinity packet
+  shared_ptr<VicinityData> vicinityData = make_shared<VicinityData>();
+  vicinityData->setName(objectName);
+  vicinityData->setNodeID(this->GetId());
+
+  // Log information
+  NS_LOG_INFO("> Vicinity data response for " << objectName);
+
+  // Send the packet
+  vicinityData->wireEncode();
+
+  m_transmittedVicinityDatas(vicinityData, this, m_face);
+  m_face->onReceiveVicinityData(*vicinityData);
+
 }
 
 void

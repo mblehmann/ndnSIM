@@ -89,13 +89,17 @@ public:
   OnVicinityData(shared_ptr<const VicinityData> vicinityData);
 
   virtual void 
-  PushContent(Name* object);
+  PushContent();
 
-  virtual Name
+  virtual int
   selectDevice();
 
   virtual void 
-  sendContent(Name device, Name object);
+  sendContent(int deviceID, Name object);
+
+  virtual void
+  OnAnnouncement(shared_ptr<const Announcement> announcement);
+
 
 public:
   typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
@@ -111,7 +115,9 @@ private:
   vector<Name> m_generatedContent;
 
   // Vicinity learned by this producer
-  vector<Name> m_vicinity;
+  vector<int> m_vicinity;
+
+  queue<Name> m_pushedObjects;
 
   // Period for learning the vicinity
   Time m_vicinityTimer;

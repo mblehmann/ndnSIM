@@ -28,6 +28,7 @@
 
 #include <utils/ndn-catalog.hpp>
 
+#include <vector>
 #include <list>
 
 using namespace std;
@@ -66,6 +67,9 @@ public:
   virtual void
   WillSendOutInterest(Name objectName);
 
+  virtual void
+  AnnounceContent(Name object);
+
   // New methods
   virtual void
   AddInterestObject(Name objectName, uint32_t chunks);
@@ -101,14 +105,17 @@ protected:
   ScheduleNextPacket();
 
 private:
-  list<Name> m_interestQueue;
+  vector<Name> m_interestQueue;
+  list<Name> m_pendingObjects;
   uint32_t m_windowSize;
   uint32_t m_pendingInterests;
 
   Ptr<NameService> m_nameService;
 
   // Retransmission
-  list<Name> m_retxNames;
+  vector<Name> m_retxNames;
+
+  vector<Name> m_providedObjects;
 
   // These are the current used variables in ndn-consumer. But we have to change them to the interest queue above.
   //uint32_t m_seq;      ///< @brief currently requested sequence number
@@ -126,6 +133,13 @@ private:
  
   SequenceNumber32 m_chunksRetrieved;
   map<Name, SequenceNumber32> m_chunkOrder;
+
+  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedAnnouncements; ///< @brief App-level trace of transmitted Announcement
+
+  TracedCallback<shared_ptr<const VicinityData>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedVicinityDatas; ///< @brief App-level trace of transmitted Vicinity Data
+
 };
 
 } // namespace ndn
