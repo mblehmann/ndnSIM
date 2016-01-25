@@ -82,23 +82,24 @@ main(int argc, char* argv[])
 
   Ptr<ns3::ndn::NameService> ns = Create<ns3::ndn::NameService>();
   ns->addUser(nodes.Get(0));
+  ns->addUser(nodes.Get(2));
 
   // Consumer
   //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   ndn::AppHelper consumerHelper("ns3::ndn::MobileUser");
   // Consumer will request /prefix/0, /prefix/1, ...
-  consumerHelper.SetPrefix("/prefix");
-  //consumerHelper.SetAttribute("Frequency", StringValue("1")); // 10 interests a second
+  consumerHelper.SetPrefix("/prod0");
   consumerHelper.SetAttribute("WindowSize", StringValue("3"));
+  consumerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   consumerHelper.SetAttribute("NameService", PointerValue(ns));
   consumerHelper.Install(nodes.Get(0));                        // first node
 
   // Producer
   //ndn::AppHelper producerHelper("ns3::ndn::Producer");
-  ndn::AppHelper producerHelper("ns3::ndn::MobileProducer");
+  ndn::AppHelper producerHelper("ns3::ndn::MobileUser");
   // Producer will reply to all requests starting with /prefix
-  producerHelper.SetPrefix("/prefix");
-  //producerHelper.SetPostfix("/postfix");
+  producerHelper.SetPrefix("/prod2");
+  producerHelper.SetAttribute("WindowSize", StringValue("3"));
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.SetAttribute("NameService", PointerValue(ns));
   producerHelper.Install(nodes.Get(2)); // last node

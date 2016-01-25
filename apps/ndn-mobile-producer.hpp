@@ -39,10 +39,6 @@ using namespace std;
 namespace ns3 {
 namespace ndn {
 
-const time::milliseconds DEFAULT_VICINITY_TIMER = time::milliseconds(30000); // 30 seconds
-
-const uint32_t DEFAULT_REPLICATION_DEGREE = 1; // 1 replica
-
 /**
  * @ingroup ndn-apps
  * @brief A mobile producer that generates content, announce it, push it, and provides it.
