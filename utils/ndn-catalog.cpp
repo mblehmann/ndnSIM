@@ -26,6 +26,7 @@
 #include <vector>
 #include <algorithm>
 #include <math.h>
+#include <random>
 
 using namespace std;
 
@@ -72,6 +73,11 @@ uint32_t
 NameService::getCatalogSize()
 {
   return m_catalog.size();
+}
+
+uint32_t NameService::getNumberOfContents()
+{
+  return m_numberOfContents;
 }
 
 void
@@ -177,6 +183,30 @@ NameService::nextZipf()
   }
   return zipfv;
 }
+
+/**
+ * Initializes a normal distribuition of content sizes (stored in a vector) 
+ * added by prlanzarin
+ */
+void
+initializeContentSizes(uint32_t numberOfObjects) 
+{
+  
+  return;
+}
+
+/**
+ * Analog to nextPopularity(), returns the next content size by shuffling
+ * the vector and popping the last element.
+ * added by prlanzarin
+ */
+uint32_t
+nextContentSize()
+{
+
+  return 0;
+}
+
 
 } // namespace ndn
 } // namespace ns3

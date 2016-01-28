@@ -54,6 +54,9 @@ public:
   uint32_t
   getCatalogSize();
 
+  uint32_t
+  getNumberOfContents();
+
   void
   addUser(Ptr<Node> user);
 
