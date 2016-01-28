@@ -609,7 +609,7 @@ void
 MobileUser::advertiseContent(Name newObject)
 {
   m_nameService->publishContent(newObject);
-  //uint32_t popularity = m_nameService->nextContentPopularity();
+  uint32_t popularity = m_nameService->nextContentPopularity();
   uint32_t chunks = 7;
 
   vector<Ptr<Node>> users = m_nameService->getUsers();
@@ -629,7 +629,7 @@ MobileUser::advertiseContent(Name newObject)
     }
   }
 
-  NS_LOG_INFO("> Advertising object " << newObject); //<< " with popularity " << popularity);
+  NS_LOG_INFO("> Advertising object " << newObject << " with popularity " << popularity);
 }
 
 /**

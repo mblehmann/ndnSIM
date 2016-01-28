@@ -20,6 +20,9 @@
 #include "ndn-catalog.hpp"
 #include "ns3/random-variable-stream.h"
 
+//TODO remove temporary imports
+#include "ns3/log.h"
+
 #include <ndn-cxx/name.hpp>
 
 #include <list>
@@ -29,6 +32,7 @@
 #include <random>
 
 using namespace std;
+
 
 namespace ns3 {
 namespace ndn {
@@ -94,24 +98,26 @@ vector<Ptr<Node>> NameService::getUsers()
 void
 NameService::initializePopularity(uint32_t numberOfObjects, float alpha)
 {
-	uint32_t sampleSize = 10000; // TODO this should be reviewed
-	uint32_t contentObjectIdx;
+  uint32_t sampleSize = 10000; // TODO this should be reviewed
+  uint32_t contentObjectIdx;
 
-	m_popularity.assign(numberOfObjects, 0.0);
-	m_zipf.assign(numberOfObjects, 0.0);	
+  m_rand = CreateObject<UniformRandomVariable>();
 
-	initializeZipf(numberOfObjects, alpha);
+  m_popularity.assign(numberOfObjects, 0.0);
 
-	// Content popularity setup
-	for (uint32_t i = 0; i < sampleSize; i++) {
-		contentObjectIdx = nextZipf();
-		m_popularity.at(contentObjectIdx) += 1;
-	}
-	
-	// Distribuition of requests (percentage)
-	for (contentObjectIdx = 0; contentObjectIdx < m_popularity.size(); contentObjectIdx++) {
-		m_popularity.at(contentObjectIdx) = m_popularity.at(contentObjectIdx) / float(sampleSize);
-	}
+  initializeZipf(numberOfObjects, alpha);
+
+  // Content popularity setup
+  for (uint32_t i = 0; i < sampleSize; i++) {
+    contentObjectIdx = nextZipf();
+    m_popularity.at(contentObjectIdx) += 1;
+  }
+
+  // Distribuition of requests (percentage)
+  for (contentObjectIdx = 0; contentObjectIdx < m_popularity.size(); contentObjectIdx++) {
+    m_popularity.at(contentObjectIdx) = m_popularity.at(contentObjectIdx) / float(sampleSize);
+  }
+
 }
 
 /**
@@ -137,7 +143,7 @@ NameService::nextContentPopularity()
 void 
 NameService::initializeZipf(uint32_t numberOfObjects, float alpha)
 {
-  static double cnst = 0;          // Normalization constant
+  double cnst = 0.0;          // Normalization constant
   double sums;
   uint32_t i;
 
@@ -145,12 +151,13 @@ NameService::initializeZipf(uint32_t numberOfObjects, float alpha)
     cnst = cnst + (1.0 / pow((double) i, alpha));
   cnst = 1.0 / cnst;
 
-	// Stores the map
+  // Stores the map
   sums = 0;
   for (i = 1; i <= numberOfObjects; i++) {
     sums = sums + cnst / pow((double) i, alpha);
-		m_zipf.push_back(sums);
+    m_zipf.push_back(sums);
   }
+
   return;
 }
 
@@ -163,14 +170,15 @@ NameService::nextZipf()
 {
   double z = 0, zipfv;
 
+
   // Pull a uniform random number (0 < z < 1)
   do {
-     z = m_rand->GetValue(0.0, 1.0);
+    z = m_rand->GetValue(0.0, 1.0);
   }
   while ((z == 0) || (z == 1));
 
   // Map z to the value
-  for (uint32_t i = 1; i <= m_zipf.size(); i++) {
+  for (uint32_t i = 0; i < m_zipf.size(); i++) {
     if (m_zipf.at(i) >= z) {
       zipfv = i;
       break;
@@ -186,7 +194,7 @@ NameService::nextZipf()
 void
 NameService::initializeContentSizes(uint32_t numberOfObjects, float u, float dev)
 {
-  default_random_engine generator;
+  default_random_engine generator; //TODO RNG FIX
   normal_distribution<double> distribution(u, dev);
 
   m_contentSizes.assign(numberOfObjects, 0);
@@ -213,7 +221,6 @@ NameService::nextContentSize()
 
   return contentSize;
 }
-
 
 } // namespace ndn
 } // namespace ns3
