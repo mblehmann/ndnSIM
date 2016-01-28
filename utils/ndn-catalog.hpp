@@ -54,9 +54,6 @@ public:
   uint32_t
   getCatalogSize();
 
-  uint32_t
-  getNumberOfContents();
-
   void
   addUser(Ptr<Node> user);
 
@@ -74,7 +71,7 @@ public:
 
   // Content size managenement
   void
-  initializeContentSizes(uint32_t numberOfObjects);
+  initializeContentSizes(uint32_t numberOfObjects, float u, float dev);
 
   uint32_t
   nextContentSize();
@@ -85,12 +82,13 @@ private:
   /* added by prlanzarin */
   vector<double> m_popularity;
   vector<double> m_zipf;
+  vector<uint32_t> m_contentSizes;
 
   /* added by prlanzarin; simulation parameters of interest to the application*/
-  uint32_t m_numberOfContents;
   //uint32_t m_numberOfUsers; // simulator only
   //uint32_t m_vicinitySize; // simulator only
-  //Ptr<UniformRandomVariable> m_rng; // rng seed from ns-3 module
+  Ptr<UniformRandomVariable> m_rand; // rng generator from ns-3 module
+
 
   void
   initializeZipf(uint32_t numberOfObjects, float alpha);

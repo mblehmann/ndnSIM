@@ -75,11 +75,6 @@ NameService::getCatalogSize()
   return m_catalog.size();
 }
 
-uint32_t NameService::getNumberOfContents()
-{
-  return m_numberOfContents;
-}
-
 void
 NameService::addUser(Ptr<Node> user)
 {
@@ -127,11 +122,12 @@ NameService::initializePopularity(uint32_t numberOfObjects, float alpha)
 double
 NameService::nextContentPopularity()
 {
-	random_shuffle(m_popularity.begin(), m_popularity.end());
-	double popularity = m_popularity.back();
-    if(m_popularity.empty() == false)
-        m_popularity.pop_back();
-	return popularity;
+  random_shuffle(m_popularity.begin(), m_popularity.end());
+  double popularity = m_popularity.back();
+  if(m_popularity.empty() == false)
+    m_popularity.pop_back();
+
+  return popularity;
 }
 
 /**
@@ -169,13 +165,12 @@ NameService::nextZipf()
 
   // Pull a uniform random number (0 < z < 1)
   do {
-	 // TODO use ns-3 randomizer
-   // z = rand(0);
+     z = m_rand->GetValue(0.0, 1.0);
   }
   while ((z == 0) || (z == 1));
 
   // Map z to the value
-  for (uint32_t i = 1; i <= m_numberOfContents; i++) {
+  for (uint32_t i = 1; i <= m_zipf.size(); i++) {
     if (m_zipf.at(i) >= z) {
       zipfv = i;
       break;
@@ -189,9 +184,17 @@ NameService::nextZipf()
  * added by prlanzarin
  */
 void
-initializeContentSizes(uint32_t numberOfObjects) 
+NameService::initializeContentSizes(uint32_t numberOfObjects, float u, float dev)
 {
-  
+  default_random_engine generator;
+  normal_distribution<double> distribution(u, dev);
+
+  m_contentSizes.assign(numberOfObjects, 0);
+
+  for (uint32_t i = 0; i < numberOfObjects; ++i) {
+    m_contentSizes.at(i) = distribution(generator);
+  }
+
   return;
 }
 
@@ -201,10 +204,14 @@ initializeContentSizes(uint32_t numberOfObjects)
  * added by prlanzarin
  */
 uint32_t
-nextContentSize()
+NameService::nextContentSize()
 {
+  random_shuffle(m_contentSizes.begin(), m_contentSizes.end());
+  double contentSize = m_contentSizes.back();
+  if(m_contentSizes.empty() == false)
+    m_contentSizes.pop_back();
 
-  return 0;
+  return contentSize;
 }
 
 
