@@ -42,19 +42,58 @@ public:
   NameService();
   ~NameService();
   
-  void publishContent(Name object);
-  void setRequests(Name object);
+  void
+  publishContent(Name object);
 
-  Name getLastObjectPublished();
-  uint32_t getCatalogSize();
+  void
+  setRequests(Name object);
 
-  void addUser(Ptr<Node> user);
-  vector<Ptr<Node>> getUsers();
+  Name
+  getLastObjectPublished();
+  
+  uint32_t
+  getCatalogSize();
+
+  void
+  addUser(Ptr<Node> user);
+
+  vector<Ptr<Node>>
+  getUsers();
+
+  /* added by prlanzarin */
+
+  // Content popularity management
+  void
+  initializePopularity(uint32_t numberOfObjects, float alpha);
+  
+  double 
+  nextContentPopularity();
+
+  // Content size managenement
+  void
+  initializeContentSizes(uint32_t numberOfObjects);
+
+  uint32_t
+  nextContentSize();
 
 private:
   list<Name> m_catalog;
   vector<Ptr<Node>> m_users;
-  
+  /* added by prlanzarin */
+  vector<double> m_popularity;
+  vector<double> m_zipf;
+
+  /* added by prlanzarin; simulation parameters of interest to the application*/
+  uint32_t m_numberOfContents;
+  //uint32_t m_numberOfUsers; // simulator only
+  //uint32_t m_vicinitySize; // simulator only
+  //Ptr<UniformRandomVariable> m_rng; // rng seed from ns-3 module
+
+  void
+  initializeZipf(uint32_t numberOfObjects, float alpha);
+  double 
+  nextZipf();
+
 };
 
 } // namespace ndn

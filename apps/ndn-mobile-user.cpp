@@ -31,6 +31,7 @@
 #include "ns3/uinteger.h"
 #include "ns3/integer.h"
 #include "ns3/double.h"
+#include "ns3/random-variable-stream.h"
 
 #include "utils/ndn-ns3-packet-tag.hpp"
 #include "model/ndn-app-face.hpp"
@@ -40,6 +41,9 @@
 #include "utils/ndn-rtt-mean-deviation.hpp"
 
 #include "helper/ndn-fib-helper.hpp"
+
+#include "stdlib.h"
+#include "time.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/ref.hpp>
@@ -124,8 +128,7 @@ MobileUser::GetTypeId(void)
                       "Delay between first transmitted Interest and received Data",
                       MakeTraceSourceAccessor(&MobileUser::m_firstInterestDataDelay),
                       "ns3::ndn::MobileUser::FirstInterestDataDelayCallback");
-
-  return tid;
+        return tid;
 }
 
 MobileUser::MobileUser()
@@ -606,6 +609,7 @@ void
 MobileUser::advertiseContent(Name newObject)
 {
   m_nameService->publishContent(newObject);
+  uint32_t popularity = m_nameService->nextContentPopularity();
   uint32_t chunks = 7;
 
   vector<Ptr<Node>> users = m_nameService->getUsers();
@@ -614,7 +618,9 @@ MobileUser::advertiseContent(Name newObject)
   for (uint32_t i = 0; i < users.size(); i++) {
     Ptr<Node> currentUser = users[i];
 
-    if (currentUser->GetId() != this->GetNode()->GetId()) {
+    // TODO
+    if (currentUser->GetId() != this->GetNode()->GetId() &&
+        (m_rand->GetValue(0, 100)) > popularity) {
 
       Ptr<MobileUser> mobileUser = DynamicCast<MobileUser> (currentUser->GetApplication(0));
       //Simulator::ScheduleNow(&MobileUser::AddInterestObject, &newObject, 3);
@@ -624,7 +630,7 @@ MobileUser::advertiseContent(Name newObject)
     }
   }
 
-  NS_LOG_INFO("> Advertising object " << newObject);
+  NS_LOG_INFO("> Advertising object " << newObject << " with popularity " << popularity);
 }
 
 /**
