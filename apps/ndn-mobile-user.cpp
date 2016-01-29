@@ -31,6 +31,7 @@
 #include "ns3/uinteger.h"
 #include "ns3/integer.h"
 #include "ns3/double.h"
+#include "ns3/random-variable-stream.h"
 
 #include "utils/ndn-ns3-packet-tag.hpp"
 #include "model/ndn-app-face.hpp"
@@ -40,6 +41,9 @@
 #include "utils/ndn-rtt-mean-deviation.hpp"
 
 #include "helper/ndn-fib-helper.hpp"
+
+#include "stdlib.h"
+#include "time.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/ref.hpp>
@@ -138,7 +142,7 @@ MobileUser::MobileUser()
 
 }
 
-/** 
+/**
  * Operations executed at the start of the application.
  * The mobile user will register its prefix in the interface.
  */
@@ -677,6 +681,10 @@ MobileUser::CreateContentName()
 void
 MobileUser::AdvertiseContent(Name newObject, uint32_t chunks)
 {
+  m_nameService->publishContent(newObject);
+  uint32_t popularity = m_nameService->nextContentPopularity();
+  uint32_t chunks = 7;
+
   vector<Ptr<Node>> users = m_nameService->getUsers();
   Ptr<Node> currentUser;
   Ptr<MobileUser> mobileUser;
@@ -685,12 +693,14 @@ MobileUser::AdvertiseContent(Name newObject, uint32_t chunks)
     Ptr<Node> currentUser = users[i];
 
     // If not the publisher
-    if (currentUser->GetId() != this->GetNode()->GetId()) {
+    if (currentUser->GetId() != this->GetNode()->GetId()) { //&& (m_rand->GetValue(0, 100)) > popularity) {
 
       Ptr<MobileUser> mobileUser = DynamicCast<MobileUser> (currentUser->GetApplication(0));
       Simulator::ScheduleWithContext(currentUser->GetId(), Time("0s"), &MobileUser::AddInterestObject, mobileUser, newObject, chunks);
     }
   }
+
+  NS_LOG_INFO("> Advertising object " << newObject << " with popularity " << popularity);
 }
 
 // STRATEGY ACTIONS
