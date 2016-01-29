@@ -130,63 +130,87 @@ MobileUser::GetTypeId(void)
 
 MobileUser::MobileUser()
   : m_rand(CreateObject<UniformRandomVariable>())
+  , m_moving(false)
 {
   NS_LOG_FUNCTION_NOARGS();
 
   m_rtt = CreateObject<RttMeanDeviation>();
+
 }
 
-// Application Methods
+/** 
+ * Operations executed at the start of the application.
+ * The mobile user will register its prefix in the interface.
+ */
 void
-MobileUser::StartApplication() // Called at time specified by Start
+MobileUser::StartApplication() 
 {
   NS_LOG_FUNCTION_NOARGS();
 
-  // do base stuff
   App::StartApplication();
   FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
 
-  NS_LOG_INFO("> Registering " << m_prefix << m_postfix);
+  Ptr<MobilityModel> mob = this->GetNode()->GetObject<MobilityModel>();
+  mob->TraceConnectWithoutContext("CourseChange", MakeCallback(&MobileUser::CourseChange, this));
 
-  Simulator::Schedule(Time("1s"), &MobileUser::PublishContent, this);
+  // TODO remove it and put in the simulation file
+  if (this->GetNode()->GetId() == 4)
+  {
+    Simulator::Schedule(Time("1s"), &MobileUser::PublishContent, this);
+  }
 }
 
+/**
+ * Operations executed at the end of the application.
+ * The mobile user will cancel any send interest event.
+ */
 void
-MobileUser::StopApplication() // Called at time specified by Stop
+MobileUser::StopApplication()
 {
   NS_LOG_FUNCTION_NOARGS();
 
-  // cancel periodic packet generation
   Simulator::Cancel(m_sendEvent);
 
-  // cleanup base stuff
   App::StopApplication();
 }
 
+// RETRANSMISSION CONTROL
+
+/**
+ * Set the retransmission check timer.
+ * It is executed once in the beginning of the simulation.
+ */
 void
 MobileUser::SetRetxTimer(Time retxTimer)
 {
   m_retxTimer = retxTimer;
   if (m_retxEvent.IsRunning()) {
-    // m_retxEvent.Cancel (); // cancel any scheduled cleanup events
-    Simulator::Remove(m_retxEvent); // slower, but better for memory
+    Simulator::Remove(m_retxEvent);
   }
 
-  // schedule even with new timeout
   m_retxEvent = Simulator::Schedule(m_retxTimer, &MobileUser::CheckRetxTimeout, this);
 }
 
+/**
+ * Get the retransmission timer.
+ */
 Time
 MobileUser::GetRetxTimer() const
 {
   return m_retxTimer;
 }
 
+/**
+ * Periodically check the retransmission timeout.
+ * Finds the Interest with the closest timeout.
+ * Checks if that Interest expired (timeout).
+ * If that is not the case, do nothing.
+ * Re-schedule the event.
+ */
 void
 MobileUser::CheckRetxTimeout()
 {
   Time now = Simulator::Now();
-
   Time rto = m_rtt->RetransmitTimeout();
   
   Name entryName;
@@ -212,32 +236,37 @@ MobileUser::CheckRetxTimeout()
       OnTimeout(expiredInterest);
     }
     else
-      break; // nothing else to do. All later packets need not be retransmitted
+      break;
   }
 
   m_retxEvent = Simulator::Schedule(m_retxTimer, &MobileUser::CheckRetxTimeout, this);
 }
 
+// PACKET/EVENT HANDLERS
+
+/**
+ * Interest packet handler.
+ * Receive the interest packet and respond with a data packet.
+ */
 void
 MobileUser::OnInterest(shared_ptr<const Interest> interest)
 {
-  App::OnInterest(interest); // tracing inside
-
+  App::OnInterest(interest);
   NS_LOG_FUNCTION(this << interest);
 
   if (!m_active)
     return;
 
   Name dataName(interest->getName());
-  // dataName.append(m_postfix);
-  // dataName.appendVersion();
 
+  // Create data packet
   auto data = make_shared<Data>();
   data->setName(dataName);
   data->setFreshnessPeriod(::ndn::time::milliseconds(m_freshness.GetMilliSeconds()));
 
   data->setContent(make_shared< ::ndn::Buffer>(m_virtualPayloadSize));
 
+  // Add signature
   Signature signature;
   SignatureInfo signatureInfo(static_cast< ::ndn::tlv::SignatureTypeValue>(255));
 
@@ -252,7 +281,7 @@ MobileUser::OnInterest(shared_ptr<const Interest> interest)
 
   NS_LOG_INFO("node(" << GetNode()->GetId() << ") responding with Data: " << data->getName());
 
-  // to create real wire encoding
+  // Send it
   data->wireEncode();
 
   m_transmittedDatas(data, this, m_face);
@@ -260,6 +289,7 @@ MobileUser::OnInterest(shared_ptr<const Interest> interest)
 }
 
 /**
+ * Data packet handler.
  * Receives the data.
  * Removes the interest packet on the queue.
  * Checks if it is the last chunk of the object (for measurement purpose).
@@ -268,16 +298,12 @@ MobileUser::OnInterest(shared_ptr<const Interest> interest)
 void
 MobileUser::OnData(shared_ptr<const Data> data)
 {
-
-  // // Do the regular processing
-  App::OnData(data); // tracing inside
+  App::OnData(data);
   NS_LOG_FUNCTION(this << data);
 
-  //Consumer::OnData(data);
   Name objectName = data->getName();
-  NS_LOG_INFO("> Data for " << objectName);
 
-  // Reduce the number of pending interest requests
+  // Update the pending interest requests
   m_pendingObjects.remove(objectName);
   m_pendingInterests--;
 
@@ -313,9 +339,10 @@ MobileUser::OnData(shared_ptr<const Data> data)
   if (concluded)
     ConcludeObjectDownload(objectPrefix);
 
+  // Calculate the hop count
   int hopCount = 0;
   auto ns3PacketTag = data->getTag<Ns3PacketTag>();
-  if (ns3PacketTag != nullptr) { // e.g., packet came from local node's cache
+  if (ns3PacketTag != nullptr) { 
     FwHopCountTag hopCountTag;
     if (ns3PacketTag->getPacket()->PeekPacketTag(hopCountTag)) {
       hopCount = hopCountTag.Get();
@@ -323,6 +350,7 @@ MobileUser::OnData(shared_ptr<const Data> data)
     }
   }
 
+  // Update the data control structures
   Time lastDelay = m_nameLastDelay[objectName];
   m_lastRetransmittedInterestDataDelay(this, objectName, Simulator::Now() - lastDelay, hopCount);
 
@@ -337,33 +365,113 @@ MobileUser::OnData(shared_ptr<const Data> data)
 
   m_rtt->AckSeq(m_chunkOrder[objectName]);
 
-  // Schedules next packets
-  ScheduleNextPacket();
+  // Schedule next packets
+  ScheduleNextInterestPacket();
 }
 
 /**
- * 
+ * Announcement packet handler.
+ * The application should not receive it.
+ * Do nothing.
+ */ 
+void
+MobileUser::OnAnnouncement(shared_ptr<const Announcement> announcement)
+{
+  App::OnAnnouncement(announcement);
+}
+
+/**
+ * Hint packet handler.
+ * The mobile user checks the hint information
+ * and decides whether to request the data or not.
+ * Decision factors are: nodeID, interest, storage, etc.
+ */
+void
+MobileUser::OnHint(shared_ptr<const Hint> hint)
+{
+  App::OnHint(hint);
+
+  Name objectName = hint->getName();
+  uint32_t nodeID = hint->getNodeID();
+  uint32_t chunks = hint->getSize();
+
+  if (nodeID == this->GetNode()->GetId()) {
+    AddInterestObject(objectName, chunks);
+    m_providedObjects.push_back(objectName);
+  }
+}
+
+/**
+ * Vicinity packet handler.
+ * The mobile user receives the probe
+ * and responds with its information
+ */
+void
+MobileUser::OnVicinity(shared_ptr<const Vicinity> vicinity)
+{
+  App::OnVicinity(vicinity);
+
+  Name objectName = vicinity->getName();
+
+  // Create the vicinity packet
+  shared_ptr<VicinityData> vicinityData = make_shared<VicinityData>();
+  vicinityData->setName(objectName);
+  vicinityData->setNodeID(this->GetNode()->GetId());
+
+  // Send the packet
+  vicinityData->wireEncode();
+
+  m_transmittedVicinityDatas(vicinityData, this, m_face);
+  m_face->onReceiveVicinityData(*vicinityData);
+}
+
+/**
+ * VicinityData packet handler.
+ * The mobile user collects the probe responses
+ * and builds a vicinity knowledge.
+ */
+void
+MobileUser::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
+{
+  Name objectName = vicinityData->getName();
+  int remoteNode = vicinityData->getNodeID();
+
+  m_vicinity.push_back(remoteNode);
+}
+
+/**
+ * Interest packet timeout handler.
+ * Update retransmission and rtt statistics.
+ * Update the pending interest data structures.
+ * Schedule to send a new Interest.  
  */
 void
 MobileUser::OnTimeout(Name objectName)
 {
   NS_LOG_FUNCTION(objectName);
   std::cout << Simulator::Now () << ", TO: " << objectName << ", current RTO: " <<
-   m_rtt->RetransmitTimeout ().ToDouble (Time::S) << "s\n";
+               m_rtt->RetransmitTimeout ().ToDouble (Time::S) << "s\n";
 
-  m_rtt->IncreaseMultiplier(); // Double the next RTO
-  m_rtt->SentSeq(m_chunkOrder[objectName],
-                 1); // make sure to disable RTT calculation for this sample
+  m_rtt->IncreaseMultiplier();
+  m_rtt->SentSeq(m_chunkOrder[objectName], 1);
   m_retxNames.push_back(objectName);
   
   m_pendingObjects.remove(objectName);
   m_pendingInterests--;
 
-  ScheduleNextPacket();
+  ScheduleNextInterestPacket();
 }
 
+// CONSUMER ACTIONS
+
 /**
- * 
+ * Send an Interest Packet.
+ * The mobile user decides the next object to request.
+ * First, it checks the retransmission queue (already failed).
+ * Then, the interest queue (not been sent yet).
+ * Send the Interest packet.
+ * Update the control data structures.
+ * Schedule next packet to send.
  */
 void
 MobileUser::SendInterestPacket()
@@ -373,6 +481,7 @@ MobileUser::SendInterestPacket()
   if (!m_active) 
     return;
 
+  // Select object to request
   if (m_retxNames.size() > 0) {
     object = m_retxNames.front();
     m_retxNames.erase(m_retxNames.begin());
@@ -385,28 +494,28 @@ MobileUser::SendInterestPacket()
     return;
   }
 
+  // Create interest packet
   shared_ptr<Interest> interest = make_shared<Interest>();
   interest->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
   interest->setName(object);
   time::milliseconds interestLifeTime(m_interestLifeTime.GetMilliSeconds());
   interest->setInterestLifetime(interestLifeTime);
 
-  // NS_LOG_INFO ("Requesting Interest: \n" << *interest);
-  NS_LOG_INFO("> Interest for " << interest->getName());
-
+  // Send packet
   WillSendOutInterest(object);
 
   m_transmittedInterests(interest, this, m_face);
   m_face->onReceiveInterest(*interest);
 
+  // Pending objects control
   m_pendingObjects.push_back(interest->getName());
   m_pendingInterests++;
 
-  ScheduleNextPacket();
+  ScheduleNextInterestPacket();
 }
 
 /**
- * 
+ * Update the control data structures of the interest packet. 
  */
 void
 MobileUser::WillSendOutInterest(Name objectName)
@@ -426,59 +535,53 @@ MobileUser::WillSendOutInterest(Name objectName)
 }
 
 /**
- * 
+ * Schedule the next Interest packet.
+ * Checks if there are pending requests
+ * and if it can send them (request window).
  */
 void
-MobileUser::ScheduleNextPacket()
+MobileUser::ScheduleNextInterestPacket()
 {
-  if (m_interestQueue.size() > 0) {
+  if (m_interestQueue.size() > 0 || m_retxNames.size() > 0) {
     if (m_pendingInterests < m_windowSize) {
-      NS_LOG_INFO("> Scheduling next packet");
-
       if (m_sendEvent.IsRunning()) {
         Simulator::Remove(m_sendEvent);
       }
 
       m_sendEvent = Simulator::ScheduleNow(&MobileUser::SendInterestPacket, this);
-      //SendInterestPacket();
     }
   }
-
 }
 
 /**
- * Adds a new object to the interest queue. It creates the name of the interest requests and puts it into the interest queue.
+ * Adds a new object to the interest queue.
+ * Creates the name of each chunk to be requested
+ * and puts them into the interest queue.
  */
 void
 MobileUser::AddInterestObject(Name objectName, uint32_t chunks)
 {
-  NS_LOG_INFO("> Adding Interest for object " << objectName << "/" << chunks);
-
-  //create the interest name
   shared_ptr<Name> interestName;
 
-  //for each chunk, append the sequence number and add it to the interest queue
+  // For each chunk, append the sequence number and add it to the interest queue
   for (uint32_t i = 0; i < chunks; i++) {
     interestName = make_shared<Name>(objectName);
     interestName->appendSequenceNumber(i);
     m_interestQueue.push_back(*interestName);
   }
   
-  NS_LOG_INFO("> Chunk " << m_interestQueue.back());
-  NS_LOG_INFO("> Chunk " << m_interestQueue.front());
-
-  Simulator::Schedule(Time("2s"), &MobileUser::ScheduleNextPacket, this);
-
+  Simulator::ScheduleNow(&MobileUser::ScheduleNextInterestPacket, this);
 }
 
 /**
- * Get performance measurements of the download
+ * Conclude the download of an object.
+ * An object is concluded when all its chunks are retrieved.
+ * Gets performance measurements of the download.
+ * If the consumer will become a provider, announce it.
  */
 void
 MobileUser::ConcludeObjectDownload(Name objectName)
 {
-  NS_LOG_INFO("Finished Dowlonading:" << objectName);
-
   for (uint32_t i = 0; i < m_providedObjects.size(); i++) {
     if (objectName == m_providedObjects[i]) {
       AnnounceContent(objectName);
@@ -487,148 +590,12 @@ MobileUser::ConcludeObjectDownload(Name objectName)
   }
 }
 
-void
-MobileUser::OnAnnouncement(shared_ptr<const Announcement> announcement)
-{
-  App::OnAnnouncement(announcement); 
-
-  NS_LOG_INFO("> LE ANNOUNCEMENT");
-}
-
-void
-MobileUser::OnHint(shared_ptr<const Hint> hint)
-{
-  App::OnHint(hint);
-
-  Name objectName = hint->getName();
-  uint32_t nodeID = hint->getNodeID();
-
-  NS_LOG_INFO("> Numbers: " << nodeID << " " << this->GetNode()->GetId());
-
-  if (nodeID == this->GetNode()->GetId()) {
-    NS_LOG_INFO("> Received hint for object " << objectName);
-
-    uint32_t chunks = 7;
-
-    AddInterestObject(objectName, chunks);
-    m_providedObjects.push_back(objectName);
-  }
-
-}
-
-void
-MobileUser::OnVicinity(shared_ptr<const Vicinity> vicinity)
-{
-  App::OnVicinity(vicinity);
-
-  Name objectName = vicinity->getName();
-  NS_LOG_INFO("> Received vicinity probe for object " << vicinity << " " << objectName);
-
-  // Create the vicinity packet
-  shared_ptr<VicinityData> vicinityData = make_shared<VicinityData>();
-  vicinityData->setName(objectName);
-  vicinityData->setNodeID(this->GetNode()->GetId());
-
-  // Log information
-  NS_LOG_INFO("> Vicinity data response for " << objectName);
-
-  // Send the packet
-  vicinityData->wireEncode();
-
-  m_transmittedVicinityDatas(vicinityData, this, m_face);
-  m_face->onReceiveVicinityData(*vicinityData);
-
-}
-
-void
-MobileUser::setVicinityTimer(Time vicinityTimer)
-{
-  m_vicinityTimer = vicinityTimer;
-}
-
-void
-MobileUser::setReplicationDegree(uint32_t replicationDegree)
-{
-  m_replicationDegree = replicationDegree;
-}
+// PROVIDER ACTIONS
 
 /**
- * Create a new content.
- * Sets it popularity through advertisement.
- */
-void
-MobileUser::PublishContent()
-{
-  NS_LOG_INFO("> Publishing a new object");
-
-  Name newObject = createContent();
-
-  // Advertise the new content
-  advertiseContent(newObject);
-
-  AnnounceContent(newObject);
-
-  discoverVicinity(newObject);
-
-  m_pushedObjects.push(newObject);
-
-  // scheduling events!!
-  Simulator::Schedule(m_vicinityTimer, &MobileUser::PushContent, this);
-
-}
-
-/**
- * Create a new content.
- */
-Name
-MobileUser::createContent()
-{
-  // Get the index of the next object
-  int objectIndex = m_generatedContent.size();
-
-  // Name is /producer/object<index>
-  // Objects have segments /producer/object<index>/#seg
-  shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
-  newObject->append("obj" + to_string(objectIndex));
-
-  // Add to the list of generated content
-  m_generatedContent.push_back(*newObject);
-
-  return *newObject;
-}
-
-/**
- * Advertise a new content.
- * Puts it into a shared data structure and set who should request it (popularity of the content).
- * I don't know yet how to do it.
- */
-void
-MobileUser::advertiseContent(Name newObject)
-{
-  m_nameService->publishContent(newObject);
-  uint32_t chunks = 7;
-
-  vector<Ptr<Node>> users = m_nameService->getUsers();
-  Ptr<Node> currentUser;
-  Ptr<MobileUser> mobileUser;
-  for (uint32_t i = 0; i < users.size(); i++) {
-    Ptr<Node> currentUser = users[i];
-
-    if (currentUser->GetId() != this->GetNode()->GetId()) {
-
-      Ptr<MobileUser> mobileUser = DynamicCast<MobileUser> (currentUser->GetApplication(0));
-      //Simulator::ScheduleNow(&MobileUser::AddInterestObject, &newObject, 3);
-      //Simulator::ScheduleNow(&MobileUser::AddInterestObject, &users[i], &newObject, 3);
-      //Simulator::ScheduleNow(&MobileUser::AddInterestObject, dynamic_cast<MobileUser*>(&users[i]->GetApplication(0)), &newObject, 3);
-      Simulator::ScheduleWithContext(currentUser->GetId(), Time("0s"), &MobileUser::AddInterestObject, mobileUser, newObject, chunks);
-    }
-  }
-
-  NS_LOG_INFO("> Advertising object " << newObject);
-}
-
-/**
- * Announce all the objects
+ * Announce all the provided content.
+ * The content can be either published
+ * or provided (as part of the strategy).
  */
 void
 MobileUser::AnnounceContent()
@@ -640,20 +607,15 @@ MobileUser::AnnounceContent()
 }
 
 /**
- * Announce a specific object
+ * Announce a specific content object.
+ * Creates an announcement packet and sends it.
  */
 void
 MobileUser::AnnounceContent(Name object)
 {
   // Create the announcement packet
   shared_ptr<Announcement> announcement = make_shared<Announcement>(object);
-  NS_LOG_INFO("> Creating the announcement for object " << object);
-
-  NS_LOG_INFO("> Generating the Nonce " << m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
   announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
-
-  // Log information
-  NS_LOG_INFO("> Announcement for " << object);
 
   // Send the packet
   announcement->wireEncode();
@@ -662,20 +624,88 @@ MobileUser::AnnounceContent(Name object)
   m_face->onReceiveAnnouncement(*announcement);
 }
 
+// PRODUCER ACTIONS
+
 /**
- * Send packets to discover the vicinity
+ * Publishes a new content object in the network.
+ * Defines the name as /producer_prefix/object<index>/
+ * Advertise the content to other consumers
+ * and schedule their requests (based on popularity).
+ * Announce the content to the routers.
+ * Triggers the pushing strategy by discovering the vicinity
+ * and schedules an event to push the object.
  */
 void
-MobileUser::discoverVicinity(Name object)
+MobileUser::PublishContent()
+{
+  Name newObject = CreateContentName();
+  uint32_t chunks = 7;
+
+  AdvertiseContent(newObject, chunks);
+
+  AnnounceContent(newObject);
+
+  DiscoverVicinity(newObject);
+
+  Simulator::Schedule(m_vicinityTimer, &MobileUser::PushContent, this, newObject, chunks);
+
+}
+
+/**
+ * Create a new content object name.
+ * Adds it to the list of generated content.
+ * Name is /prefix/postfix<index>
+ * Objects have segments /prefixr/postfix<index>/#seg
+ */
+Name
+MobileUser::CreateContentName()
+{
+  int objectIndex = m_generatedContent.size();
+
+  shared_ptr<Name> newObject = make_shared<Name>(m_prefix);
+  newObject->append(m_postfix.toUri() + to_string(objectIndex));
+
+  m_generatedContent.push_back(*newObject);
+
+  return *newObject;
+}
+
+/**
+ * Advertise a new content to other consumers.
+ * Based on the popularity of the content, schedule consumers to request it.
+ */
+void
+MobileUser::AdvertiseContent(Name newObject, uint32_t chunks)
+{
+  vector<Ptr<Node>> users = m_nameService->getUsers();
+  Ptr<Node> currentUser;
+  Ptr<MobileUser> mobileUser;
+
+  for (uint32_t i = 0; i < users.size(); i++) {
+    Ptr<Node> currentUser = users[i];
+
+    // If not the publisher
+    if (currentUser->GetId() != this->GetNode()->GetId()) {
+
+      Ptr<MobileUser> mobileUser = DynamicCast<MobileUser> (currentUser->GetApplication(0));
+      Simulator::ScheduleWithContext(currentUser->GetId(), Time("0s"), &MobileUser::AddInterestObject, mobileUser, newObject, chunks);
+    }
+  }
+}
+
+// STRATEGY ACTIONS
+
+/**
+ * Triggers the vicinity discovery process
+ * Sends a vicinity packet with a given scope.
+ */
+void
+MobileUser::DiscoverVicinity(Name object)
 {
   m_vicinity.clear();
 
   // Create the vicinity packet
   shared_ptr<Vicinity> vicinity = make_shared<Vicinity>(object);
-  NS_LOG_INFO("> Discovering the vicinity for object " << object);
-
-  // Log information
-  NS_LOG_INFO("> Vicinity discovery for " << object);
 
   // Send the packet
   vicinity->wireEncode();
@@ -684,64 +714,95 @@ MobileUser::discoverVicinity(Name object)
   m_face->onReceiveVicinity(*vicinity);
 }
 
-void
-MobileUser::OnVicinityData(shared_ptr<const VicinityData> vicinityData)
-{
-  Name objectName = vicinityData->getName();
-  int remoteNode = vicinityData->getNodeID();
-  NS_LOG_INFO("> Vicinity data response RECEIVED from " << remoteNode << " for " << objectName);
-
-  m_vicinity.push_back(remoteNode);
-}
-
 /**
- * Execute the whole push content operation
+ * Push the content to other devices.
+ * Select the devices on the learnt vicinity
+ * and send them the content.
  */
 void
-MobileUser::PushContent()
+MobileUser::PushContent(Name objectName, uint32_t chunks)
 {
-  Name objectName = m_pushedObjects.front();
-  m_pushedObjects.pop();
-
-  NS_LOG_INFO("> Pushing the object " << objectName);
-
   if (m_vicinity.size() > 0) {
-
-    NS_LOG_INFO("> We have neighbours " << m_vicinity.size());
     int deviceID;
 
     for (uint32_t i = 0; i < m_replicationDegree; i++) {
-      deviceID = selectDevice();
-      NS_LOG_INFO("> Selected device " << deviceID);
-      sendContent(deviceID, objectName);
+      deviceID = SelectDevice();
+      SendContent(deviceID, objectName, chunks);
     }
   }
 }
 
+/**
+ * Select a device from the vicinity.
+ */
 int
-MobileUser::selectDevice()
+MobileUser::SelectDevice()
 {
   int position = m_rand->GetValue(0, m_vicinity.size());
   return m_vicinity[position];
 }
 
+/**
+ * Send (push) the content to others.
+ * We implement it as a hint instead of unsolicited data.
+ */
 void
-MobileUser::sendContent(int deviceID, Name objectName)
+MobileUser::SendContent(int deviceID, Name objectName, uint32_t chunks)
 {
-  NS_LOG_INFO("> Sending " << objectName << " to " << deviceID);
   // Create the vicinity packet
-  shared_ptr<Hint> hint = make_shared<Hint>(objectName);
+  shared_ptr<Hint> hint = make_shared<Hint>(objectName, chunks);
   hint->setNodeID(deviceID);
   hint->setScope(2);
-
-  // Log information
-  NS_LOG_INFO("> Hint to " << deviceID << " for " << objectName);
 
   // Send the packet
   hint->wireEncode();
 
   m_transmittedHints(hint, this, m_face);
   m_face->onReceiveHint(*hint);
+}
+
+// MOBILITY ACTIONS
+
+/**
+ *
+ */
+void
+MobileUser::Move(Ptr<const MobilityModel> model)
+{
+  NS_LOG_FUNCTION_NOARGS();
+
+  m_moving = true;
+
+  Vector pos = model->GetPosition();
+  NS_LOG_INFO("Starting movement from (" << pos.x << ", " << pos.y << ") to ");
+}
+
+/**
+ *
+ */
+void
+MobileUser::Session(Ptr<const MobilityModel> model)
+{
+  NS_LOG_FUNCTION_NOARGS();
+
+  m_moving = false;
+ 
+  Vector pos = model->GetPosition();
+  NS_LOG_INFO("Node is at (" << pos.x << ", " << pos.y << ")"); 
+
+}
+
+void
+MobileUser::CourseChange(Ptr<const MobilityModel> model)
+{
+  NS_LOG_FUNCTION_NOARGS();
+
+  if (m_moving)
+    Session(model);
+
+  else
+    Move(model);
+
 }
 
 } // namespace ndn

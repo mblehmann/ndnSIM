@@ -134,8 +134,6 @@ AppFace::onReceiveData(const Data& data)
 void
 AppFace::onReceiveAnnouncement(const Announcement& announcement)
 {
-  NS_LOG_INFO("> ANNOUNCEMENT!!");
-
   NS_LOG_FUNCTION(this << &announcement);
   this->emitSignal(onReceiveAnnouncement, announcement);
 }
@@ -143,8 +141,6 @@ AppFace::onReceiveAnnouncement(const Announcement& announcement)
 void
 AppFace::onReceiveHint(const Hint& hint)
 {
-  NS_LOG_INFO("> HINT!!");
-
   NS_LOG_FUNCTION(this << &hint);
   this->emitSignal(onReceiveHint, hint);
 }
@@ -152,8 +148,6 @@ AppFace::onReceiveHint(const Hint& hint)
 void
 AppFace::onReceiveVicinity(const Vicinity& vicinity)
 {
-  NS_LOG_INFO("> VICINITY!!");
-
   NS_LOG_FUNCTION(this << &vicinity);
   this->emitSignal(onReceiveVicinity, vicinity);
 }
@@ -161,8 +155,6 @@ AppFace::onReceiveVicinity(const Vicinity& vicinity)
 void
 AppFace::onReceiveVicinityData(const VicinityData& vicinityData)
 {
-  NS_LOG_INFO("> VICINITY DATA!!");
-
   NS_LOG_FUNCTION(this << &vicinityData);
   this->emitSignal(onReceiveVicinityData, vicinityData);
 }

@@ -96,6 +96,11 @@ public:
   typedef void (*InterestTraceCallback)(shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>);
   typedef void (*DataTraceCallback)(shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>);
 
+  typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
+  typedef void (*HintTraceCallback)(shared_ptr<const Hint>, Ptr<App>, shared_ptr<Face>);
+  typedef void (*VicinityTraceCallback)(shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>);
+  typedef void (*VicinityDataTraceCallback)(shared_ptr<const VicinityData>, Ptr<App>, shared_ptr<Face>);
+
 protected:
   virtual void
   DoInitialize();
@@ -138,6 +143,19 @@ protected:
 
   TracedCallback<shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>>
     m_transmittedDatas; ///< @brief App-level trace of transmitted Data
+
+  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedAnnouncements; ///< @brief App-level trace of transmitted Announcement
+
+  TracedCallback<shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedVicinities; ///< @brief App-level trace of transmitted Vicinity
+
+  TracedCallback<shared_ptr<const Hint>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedHints; ///< @brief App-level trace of transmitted Hint
+
+  TracedCallback<shared_ptr<const VicinityData>, Ptr<App>, shared_ptr<Face>>
+    m_transmittedVicinityDatas; ///< @brief App-level trace of transmitted Vicinity Data
+
 };
 
 } // namespace ndn
