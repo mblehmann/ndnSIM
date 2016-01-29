@@ -40,43 +40,11 @@ namespace ndn {
 using ::ndn::Name;
 
 NameService::NameService()
-  : m_catalog()
-  , m_users() // added by prlanzarin
 {
 }
-
-//TODO parametized constructor
-
-//TODO setters &/|| getters for simulation parameters
 
 NameService::~NameService()
 {
-}
-
-void
-NameService::publishContent(Name object)
-{
-  m_catalog.push_back(object);
-}
-
-/*
-void NameService::setRequests(Name object)
-{
-  for (int i = 0; i < m_users.size(); i++) {
-      Simulator::ScheduleiNow(&MobileUser::AddInterestObject, &m_users[i], &newObject, 3);
-  }
-}
-*/
-
-Name NameService::getLastObjectPublished()
-{
-  return m_catalog.back();
-}
-
-uint32_t 
-NameService::getCatalogSize()
-{
-  return m_catalog.size();
 }
 
 void
@@ -90,101 +58,50 @@ vector<Ptr<Node>> NameService::getUsers()
   return m_users;
 }
 
-
-/**
- * Initializes the popularity vector.
- * added by prlanzarin
- */
 void
-NameService::initializePopularity(uint32_t numberOfObjects, float alpha)
+NameService::addRouter(Ptr<Node> router)
 {
-  uint32_t sampleSize = 10000; // TODO this should be reviewed
-  uint32_t contentObjectIdx;
-
-  m_rand = CreateObject<UniformRandomVariable>();
-
-  m_popularity.assign(numberOfObjects, 0.0);
-
-  initializeZipf(numberOfObjects, alpha);
-
-  // Content popularity setup
-  for (uint32_t i = 0; i < sampleSize; i++) {
-    contentObjectIdx = nextZipf();
-    m_popularity.at(contentObjectIdx) += 1;
-  }
-
-  // Distribuition of requests (percentage)
-  for (contentObjectIdx = 0; contentObjectIdx < m_popularity.size(); contentObjectIdx++) {
-    m_popularity.at(contentObjectIdx) = m_popularity.at(contentObjectIdx) / float(sampleSize);
-  }
-
+  m_routers.push_back(router);
 }
 
-/**
- * Returns the popularity for a content by shuffling the popularity vector
- * and popping the last element.
- * added by prlanzarin
- */
+vector<Ptr<Node>> NameService::getRouters()
+{
+  return m_routers;
+}
+
+void
+NameService::setCatalogSize(uint32_t catalogSize)
+{
+  m_catalogSize = catalogSize;
+}
+
+void
+NameService::initializePopularity(double alpha)
+{
+  m_alpha = alpha;
+
+  m_base = 0;
+  for (uint32_t k = 1; k <= m_catalogSize; k++)
+  {
+    m_popularityIndex.push_back(k);
+    m_base += pow(k, -1*m_alpha);
+  }
+  random_shuffle(m_popularityIndex.begin(), m_popularityIndex.end());
+}
+
 double
-NameService::nextContentPopularity()
+NameService::getNextPopularity()
 {
-  random_shuffle(m_popularity.begin(), m_popularity.end());
-  double popularity = m_popularity.back();
-  if(m_popularity.empty() == false)
-    m_popularity.pop_back();
+  uint32_t index = m_popularityIndex.back();
+  m_popularityIndex.pop_back();
 
-  return popularity;
+  return getContentPopularity(index);
 }
 
-/**
- * Initializes the zipf distribuition vector.
- * added by prlanzarin
- */
-void 
-NameService::initializeZipf(uint32_t numberOfObjects, float alpha)
-{
-  double cnst = 0.0;          // Normalization constant
-  double sums;
-  uint32_t i;
-
-  for (i = 1; i <= numberOfObjects; i++)
-    cnst = cnst + (1.0 / pow((double) i, alpha));
-  cnst = 1.0 / cnst;
-
-  // Stores the map
-  sums = 0;
-  for (i = 1; i <= numberOfObjects; i++) {
-    sums = sums + cnst / pow((double) i, alpha);
-    m_zipf.push_back(sums);
-  }
-
-  return;
-}
-
-/**
- * Returns the mapped element of the next zipf distribuition value.
- * added by prlanzarin
- */
 double
-NameService::nextZipf()
+NameService::getContentPopularity(uint32_t rank)
 {
-  double z = 0, zipfv;
-
-
-  // Pull a uniform random number (0 < z < 1)
-  do {
-    z = m_rand->GetValue(0.0, 1.0);
-  }
-  while ((z == 0) || (z == 1));
-
-  // Map z to the value
-  for (uint32_t i = 0; i < m_zipf.size(); i++) {
-    if (m_zipf.at(i) >= z) {
-      zipfv = i;
-      break;
-    }
-  }
-  return zipfv;
+  return pow(rank, -1*m_alpha)/m_base;
 }
 
 /**
@@ -192,18 +109,11 @@ NameService::nextZipf()
  * added by prlanzarin
  */
 void
-NameService::initializeContentSizes(uint32_t numberOfObjects, float u, float dev)
+NameService::initializeObjectSize(double mean, double stddev)
 {
-  default_random_engine generator; //TODO RNG FIX
-  normal_distribution<double> distribution(u, dev);
-
-  m_contentSizes.assign(numberOfObjects, 0);
-
-  for (uint32_t i = 0; i < numberOfObjects; ++i) {
-    m_contentSizes.at(i) = distribution(generator);
-  }
-
-  return;
+  m_objectSize = CreateObject<NormalRandomVariable>();
+  m_objectSize->SetAttribute("Mean", DoubleValue(mean));
+  m_objectSize->SetAttribute("Variance", DoubleValue(stddev));
 }
 
 /**
@@ -212,14 +122,9 @@ NameService::initializeContentSizes(uint32_t numberOfObjects, float u, float dev
  * added by prlanzarin
  */
 uint32_t
-NameService::nextContentSize()
+NameService::getNextObjectSize()
 {
-  random_shuffle(m_contentSizes.begin(), m_contentSizes.end());
-  double contentSize = m_contentSizes.back();
-  if(m_contentSizes.empty() == false)
-    m_contentSizes.pop_back();
-
-  return contentSize;
+  return round(m_objectSize->GetValue());
 }
 
 } // namespace ndn

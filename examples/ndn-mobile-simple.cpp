@@ -59,9 +59,52 @@ main(int argc, char* argv[])
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
 
+  double mean = 100;
+  double shape = 1.07;
+
   // Read optional command-line parameters (e.g., enable visualizer with ./waf --run=<> --visualize
   CommandLine cmd;
+  cmd.AddValue("mean", "Mean", mean);
+  cmd.AddValue("shape", "Shape", shape);;
   cmd.Parse(argc, argv);
+
+  //paramaters
+  //simulationTime
+  Time simulationTime = Seconds(2.0);
+
+  //seed
+  RngSeedManager::SetSeed(3);
+  RngSeedManager::SetRun(7);
+
+  // TODO write a topology file
+  //numberUsers
+  uint32_t numberUsers = 2;
+  uint32_t numberRouters = 3;
+
+  //mobilityParameters;
+  Ptr<UniformRandomVariable> speed = CreateObject<UniformRandomVariable>();
+  speed->SetAttribute("Min", DoubleValue(0.3));
+  speed->SetAttribute("Max", DoubleValue(3.0));
+
+  //StringValue speed = StringValue("ns3::UniformRandomVariable[Min=0.3|Max=3.0]");
+
+  //pauseParameters;
+  Ptr<ParetoRandomVariable> pause = CreateObject<ParetoRandomVariable>();
+  pause->SetAttribute("Mean", DoubleValue(mean));
+  pause->SetAttribute("Shape", DoubleValue(shape));
+  pause->SetAttribute("Bound", DoubleValue(180));
+
+  //vicinitySize
+  uint32_t vicinitySize = 2;
+
+  //replicationDegree
+  uint32_t replicationDegree = 3;
+
+  //numberObjects
+  uint32_t catalogSize = 1;  
+
+  //cacheSize;
+  uint32_t cacheSize = 1;
 
   // Creating nodes
   NodeContainer nodes;
@@ -88,11 +131,15 @@ main(int argc, char* argv[])
   Ptr<ns3::ndn::NameService> ns = Create<ns3::ndn::NameService>();
   ns->addUser(nodes.Get(0));
   ns->addUser(nodes.Get(4));
+  ns->addRouter(nodes.Get(1));
+  ns->addRouter(nodes.Get(2));
+  ns->addRouter(nodes.Get(3));
+  ns->setCatalogSize(10);
+  ns->initializeObjectSize(100, 20);
+  ns->initializePopularity(0.8);
 
   // Consumer
-  //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   ndn::AppHelper consumerHelper("ns3::ndn::MobileUser");
-  // Consumer will request /prefix/0, /prefix/1, ...
   consumerHelper.SetPrefix("/prod0");
   consumerHelper.SetAttribute("Postfix", StringValue("/obj"));
   consumerHelper.SetAttribute("WindowSize", StringValue("3"));
@@ -103,7 +150,6 @@ main(int argc, char* argv[])
   // Producer
   //ndn::AppHelper producerHelper("ns3::ndn::Producer");
   ndn::AppHelper producerHelper("ns3::ndn::MobileUser");
-  // Producer will reply to all requests starting with /prefix
   producerHelper.SetPrefix("/prod4");
   producerHelper.SetAttribute("Postfix", StringValue("/obj"));
   producerHelper.SetAttribute("WindowSize", StringValue("3"));
@@ -115,12 +161,9 @@ main(int argc, char* argv[])
   ndn::LinkControlHelper::FailLink(nodes.Get(2), nodes.Get(4));
   ndn::LinkControlHelper::UpLink(nodes.Get(3), nodes.Get(4));
 
-  Ptr<UniformRandomVariable> randomizer = CreateObject<UniformRandomVariable>();
-  randomizer->SetAttribute("Min", DoubleValue(10));
-  randomizer->SetAttribute("Max", DoubleValue(100));
-
   MobilityHelper mobility;
 
+  // Initialize positions of nodes
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
   positionAlloc->Add(Vector(0, 0, 0));
   positionAlloc->Add(Vector(10, 0, 0));
@@ -130,46 +173,14 @@ main(int argc, char* argv[])
   mobility.SetPositionAllocator(positionAlloc);
 
   mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
-                            "Speed", StringValue("ns3::UniformRandomVariable[Min=0.3|Max=0.7]"),
-                            "Pause", StringValue("ns3::ConstantRandomVariable[Constant=2.0]"),
+                            "Speed", PointerValue(speed),
+                            "Pause", PointerValue(pause),
                             "PositionAllocator", PointerValue(positionAlloc));
 
-
-
-/*
-  // Mobility
-  MobilityHelper mobility;
-  // Put everybody into a line
-  Ptr<ListPositionAllocator> initialAlloc = CreateObject<ListPositionAllocator>();
-//  for (uint32_t i = 0; i < mainNodes.GetN(); ++i) {
-    initialAlloc->Add(Vector(0, 0, 0));
-    initialAlloc->Add(Vector(1, 1, 0));
-    initialAlloc->Add(Vector(2, 2, 0));
-    initialAlloc->Add(Vector(3, 3, 0));
-    initialAlloc->Add(Vector(4, 4, 0));
-//  }
-  mobility.SetPositionAllocator(initialAlloc);
-
-  ObjectFactory pos;
-  pos.SetTypeId ("ns3::GridPositionAllocator");
-  pos.Set ("MinX", DoubleValue (0.0));
-  pos.Set ("MinY", DoubleValue (0.0));
-  pos.Set ("DeltaX", DoubleValue (5.0));
-  pos.Set ("DeltaY", DoubleValue (5.0));
-  pos.Set ("GridWidth", UintegerValue (10));
-  pos.Set ("LayoutType", StringValue ("RowFirst"));
-
-  Ptr<Object> posAlloc =(pos.Create());
-
-  mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
-                            "Speed", StringValue("ns3::UniformRandomVariable[Min=0.3|Max=0.7]"),
-                            "Pause", StringValue("ns3::ConstantRandomVariable[Constant=2.0]"),
-                            "PositionAllocator", PointerValue(posAlloc));
-*/
   mobility.Install(nodes.Get(0));
   mobility.Install(nodes.Get(4));
 
-  Simulator::Stop(Seconds(100.0));
+  Simulator::Stop(simulationTime);
 
   Simulator::Run();
   Simulator::Destroy();

@@ -42,6 +42,8 @@
 
 #include "helper/ndn-fib-helper.hpp"
 
+#include "helper/ndn-link-control-helper.hpp"
+
 #include "stdlib.h"
 #include "time.h"
 
@@ -604,10 +606,12 @@ MobileUser::ConcludeObjectDownload(Name objectName)
 void
 MobileUser::AnnounceContent()
 {
-  uint32_t publishedObjects = m_generatedContent.size();
-  for (uint32_t i = 0; i < publishedObjects; i++) {
+  for (uint32_t i = 0; i < m_generatedContent.size(); i++) {
     AnnounceContent(m_generatedContent[i]);
   }
+  for (uint32_t i = 0; i < m_providedObjects.size(); i++) {
+    AnnounceContent(m_providedObjects[i]);
+  }   
 }
 
 /**
@@ -643,7 +647,7 @@ void
 MobileUser::PublishContent()
 {
   Name newObject = CreateContentName();
-  uint32_t chunks = 7;
+  uint32_t chunks = m_nameService->getNextObjectSize();
 
   AdvertiseContent(newObject, chunks);
 
@@ -681,9 +685,7 @@ MobileUser::CreateContentName()
 void
 MobileUser::AdvertiseContent(Name newObject, uint32_t chunks)
 {
-  m_nameService->publishContent(newObject);
-  uint32_t popularity = m_nameService->nextContentPopularity();
-  uint32_t chunks = 7;
+  double popularity = m_nameService->getNextPopularity();
 
   vector<Ptr<Node>> users = m_nameService->getUsers();
   Ptr<Node> currentUser;
@@ -693,10 +695,11 @@ MobileUser::AdvertiseContent(Name newObject, uint32_t chunks)
     Ptr<Node> currentUser = users[i];
 
     // If not the publisher
-    if (currentUser->GetId() != this->GetNode()->GetId()) { //&& (m_rand->GetValue(0, 100)) > popularity) {
-
+    if (currentUser->GetId() != this->GetNode()->GetId() && m_rand->GetValue(0, 100) < popularity) {
       Ptr<MobileUser> mobileUser = DynamicCast<MobileUser> (currentUser->GetApplication(0));
-      Simulator::ScheduleWithContext(currentUser->GetId(), Time("0s"), &MobileUser::AddInterestObject, mobileUser, newObject, chunks);
+      double requestTime = m_rand->GetValue(Simulator::Now().ToDouble(Time::S), Simulator::Now().ToDouble(Time::S) + Time("30min").ToDouble(Time::S));
+
+      Simulator::ScheduleWithContext(currentUser->GetId(), Time(to_string(requestTime) + "s"), &MobileUser::AddInterestObject, mobileUser, newObject, chunks);
     }
   }
 
@@ -783,8 +786,15 @@ MobileUser::Move(Ptr<const MobilityModel> model)
 
   m_moving = true;
 
-  Vector pos = model->GetPosition();
-  NS_LOG_INFO("Starting movement from (" << pos.x << ", " << pos.y << ") to ");
+  vector<Ptr<Node>> routers = m_nameService->getRouters();
+  Ptr<Node> currentRouter;
+  Ptr<MobilityModel> mob;
+
+  for (uint32_t i = 0; i < routers.size(); i++) {
+    Ptr<Node> currentRouter = routers[i];
+    ndn::LinkControlHelper::FailLink(this->GetNode(), currentRouter);
+  }
+
 }
 
 /**
@@ -798,8 +808,24 @@ MobileUser::Session(Ptr<const MobilityModel> model)
   m_moving = false;
  
   Vector pos = model->GetPosition();
-  NS_LOG_INFO("Node is at (" << pos.x << ", " << pos.y << ")"); 
 
+  vector<Ptr<Node>> routers = m_nameService->getRouters();
+  Ptr<Node> currentRouter;
+  Ptr<MobilityModel> mob;
+
+  for (uint32_t i = 0; i < routers.size(); i++) {
+    Ptr<Node> currentRouter = routers[i];
+    Ptr<MobilityModel> mob = currentRouter->GetObject<MobilityModel>();
+
+    if (CalculateDistance(mob->GetPosition(), pos) <= 1) {
+      ndn::LinkControlHelper::UpLink(this->GetNode(), currentRouter);
+    }
+    else {
+      ndn::LinkControlHelper::FailLink(this->GetNode(), currentRouter);
+    }
+  }
+
+  AnnounceContent();
 }
 
 void

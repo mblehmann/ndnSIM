@@ -43,57 +43,50 @@ public:
   ~NameService();
   
   void
-  publishContent(Name object);
-
-  void
-  setRequests(Name object);
-
-  Name
-  getLastObjectPublished();
-  
-  uint32_t
-  getCatalogSize();
-
-  void
   addUser(Ptr<Node> user);
 
   vector<Ptr<Node>>
   getUsers();
 
+  void
+  addRouter(Ptr<Node> router);
+
+  vector<Ptr<Node>>
+  getRouters();
+
+  void
+  setCatalogSize(uint32_t catalogSize);
+  
   /* added by prlanzarin */
 
   // Content popularity management
   void
-  initializePopularity(uint32_t numberOfObjects, float alpha);
+  initializePopularity(double alpha);
   
   double 
-  nextContentPopularity();
+  getNextPopularity();
+
+  double
+  getContentPopularity(uint32_t rank);
 
   // Content size managenement
   void
-  initializeContentSizes(uint32_t numberOfObjects, float u, float dev);
+  initializeObjectSize(double mean, double stddev);
 
   uint32_t
-  nextContentSize();
+  getNextObjectSize();
 
 private:
-  list<Name> m_catalog;
   vector<Ptr<Node>> m_users;
-  /* added by prlanzarin */
-  vector<double> m_popularity;
-  vector<double> m_zipf;
-  vector<uint32_t> m_contentSizes;
+  vector<Ptr<Node>> m_routers;
 
-  /* added by prlanzarin; simulation parameters of interest to the application*/
-  //uint32_t m_numberOfUsers; // simulator only
-  //uint32_t m_vicinitySize; // simulator only
-  Ptr<UniformRandomVariable> m_rand; // rng generator from ns-3 module
+  vector<uint32_t> m_popularityIndex;
 
+  Ptr<NormalRandomVariable> m_objectSize;
 
-  void
-  initializeZipf(uint32_t numberOfObjects, float alpha);
-  double 
-  nextZipf();
+  uint32_t m_catalogSize;
+  double m_alpha;
+  double m_base;
 
 };
 
