@@ -80,26 +80,14 @@ public:
   virtual void
   OnData(shared_ptr<const Data> data);
 
-  virtual void
-  OnAnnouncement(shared_ptr<const Announcement> announcement);
-
-  virtual void
-  OnHint(shared_ptr<const Hint> hint);
-
-  virtual void
-  OnVicinity(shared_ptr<const Vicinity> vicinity);
-
-  virtual void
-  OnVicinityData(shared_ptr<const VicinityData> vicinityData);
+//  virtual void
+//  OnAnnouncement(shared_ptr<const Announcement> announcement);
 
 public:
   typedef void (*InterestTraceCallback)(shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>);
   typedef void (*DataTraceCallback)(shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>);
 
-  typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
-  typedef void (*HintTraceCallback)(shared_ptr<const Hint>, Ptr<App>, shared_ptr<Face>);
-  typedef void (*VicinityTraceCallback)(shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>);
-  typedef void (*VicinityDataTraceCallback)(shared_ptr<const VicinityData>, Ptr<App>, shared_ptr<Face>);
+//  typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
 
 protected:
   virtual void
@@ -126,17 +114,8 @@ protected:
   TracedCallback<shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>>
     m_receivedDatas; ///< @brief App-level trace of received Data
 
-  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
-    m_receivedAnnouncements; ///< @brief App-level trace of received Data
-
-  TracedCallback<shared_ptr<const Hint>, Ptr<App>, shared_ptr<Face>>
-    m_receivedHints; ///< @brief App-level trace of received Data
-
-  TracedCallback<shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>>
-    m_receivedVicinities; ///< @brief App-level trace of received Data
-
-  TracedCallback<shared_ptr<const VicinityData>, Ptr<App>, shared_ptr<Face>>
-    m_receivedVicinityDatas; ///< @brief App-level trace of received Data
+//  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
+//    m_receivedAnnouncements; ///< @brief App-level trace of received Data
 
   TracedCallback<shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>>
     m_transmittedInterests; ///< @brief App-level trace of transmitted Interests
@@ -144,17 +123,8 @@ protected:
   TracedCallback<shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>>
     m_transmittedDatas; ///< @brief App-level trace of transmitted Data
 
-  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
-    m_transmittedAnnouncements; ///< @brief App-level trace of transmitted Announcement
-
-  TracedCallback<shared_ptr<const Vicinity>, Ptr<App>, shared_ptr<Face>>
-    m_transmittedVicinities; ///< @brief App-level trace of transmitted Vicinity
-
-  TracedCallback<shared_ptr<const Hint>, Ptr<App>, shared_ptr<Face>>
-    m_transmittedHints; ///< @brief App-level trace of transmitted Hint
-
-  TracedCallback<shared_ptr<const VicinityData>, Ptr<App>, shared_ptr<Face>>
-    m_transmittedVicinityDatas; ///< @brief App-level trace of transmitted Vicinity Data
+//  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
+//    m_transmittedAnnouncements; ///< @brief App-level trace of transmitted Announcement
 
 };
 

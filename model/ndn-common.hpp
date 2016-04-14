@@ -34,9 +34,6 @@
 #include <ndn-cxx/security/key-chain.hpp>
 
 #include <ndn-cxx/announcement.hpp>
-#include <ndn-cxx/hint.hpp>
-#include <ndn-cxx/vicinity.hpp>
-#include <ndn-cxx/vicinity-data.hpp>
 
 #include <ndn-cxx/util/time.hpp>
 
@@ -67,11 +64,9 @@ using ::ndn::Signature;
 using ::ndn::SignatureInfo;
 using ::ndn::Block;
 using ::ndn::KeyChain;
+using ::ndn::StrategySelectors;
 
-using ::ndn::Announcement;
-using ::ndn::Hint;
-using ::ndn::Vicinity;
-using ::ndn::VicinityData;
+//using ::ndn::Announcement;
 
 #ifndef DOXYGEN
 // For python bindings

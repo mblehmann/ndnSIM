@@ -55,57 +55,18 @@ PacketHeader<Data>::GetTypeId()
   return tid;
 }
 
-template<>
-ns3::TypeId
-PacketHeader<Announcement>::GetTypeId()
-{
-  static ns3::TypeId tid =
-    ns3::TypeId("ns3::ndn::Announcement")
-    .SetGroupName("Ndn")
-    .SetParent<Header>()
-    .AddConstructor<PacketHeader<Announcement>>()
-    ;
-  return tid;
-}
-
-template<>
-ns3::TypeId
-PacketHeader<Hint>::GetTypeId()
-{
-  static ns3::TypeId tid =
-    ns3::TypeId("ns3::ndn::Hint")
-    .SetGroupName("Ndn")
-    .SetParent<Header>()
-    .AddConstructor<PacketHeader<Hint>>()
-    ;
-  return tid;
-}
-
-template<>
-ns3::TypeId
-PacketHeader<Vicinity>::GetTypeId()
-{
-  static ns3::TypeId tid =
-    ns3::TypeId("ns3::ndn::Vicinity")
-    .SetGroupName("Ndn")
-    .SetParent<Header>()
-    .AddConstructor<PacketHeader<Vicinity>>()
-    ;
-  return tid;
-}
-
-template<>
-ns3::TypeId
-PacketHeader<VicinityData>::GetTypeId()
-{
-  static ns3::TypeId tid =
-    ns3::TypeId("ns3::ndn::VicinityData")
-    .SetGroupName("Ndn")
-    .SetParent<Header>()
-    .AddConstructor<PacketHeader<VicinityData>>()
-    ;
-  return tid;
-}
+//template<>
+//ns3::TypeId
+//PacketHeader<Announcement>::GetTypeId()
+//{
+//  static ns3::TypeId tid =
+//    ns3::TypeId("ns3::ndn::Announcement")
+//    .SetGroupName("Ndn")
+//    .SetParent<Header>()
+//    .AddConstructor<PacketHeader<Announcement>>()
+//    ;
+//  return tid;
+//}
 
 template<class Pkt>
 TypeId
@@ -190,33 +151,12 @@ PacketHeader<Data>::Print(std::ostream& os) const
   os << "D: " << *m_packet;
 }
 
-template<>
-void
-PacketHeader<Announcement>::Print(std::ostream& os) const
-{
-  os << "A: " << *m_packet;
-}
-
-template<>
-void
-PacketHeader<Hint>::Print(std::ostream& os) const
-{
-  os << "H: " << *m_packet;
-}
-
-template<>
-void
-PacketHeader<Vicinity>::Print(std::ostream& os) const
-{
-  os << "V: " << *m_packet;
-}
-
-template<>
-void
-PacketHeader<VicinityData>::Print(std::ostream& os) const
-{
-  os << "VD: " << *m_packet;
-}
+//template<>
+//void
+//PacketHeader<Announcement>::Print(std::ostream& os) const
+//{
+//  os << "A: " << *m_packet;
+//}
 
 template<class Pkt>
 shared_ptr<const Pkt>
@@ -227,24 +167,15 @@ PacketHeader<Pkt>::getPacket()
 
 typedef PacketHeader<Interest> InterestHeader;
 typedef PacketHeader<Data> DataHeader;
-typedef PacketHeader<Announcement> AnnouncementHeader;
-typedef PacketHeader<Hint> HintHeader;
-typedef PacketHeader<Vicinity> VicinityHeader;
-typedef PacketHeader<VicinityData> VicinityDataHeader;
+//typedef PacketHeader<Announcement> AnnouncementHeader;
 
 NS_OBJECT_ENSURE_REGISTERED(InterestHeader);
 NS_OBJECT_ENSURE_REGISTERED(DataHeader);
-NS_OBJECT_ENSURE_REGISTERED(AnnouncementHeader);
-NS_OBJECT_ENSURE_REGISTERED(HintHeader);
-NS_OBJECT_ENSURE_REGISTERED(VicinityHeader);
-NS_OBJECT_ENSURE_REGISTERED(VicinityDataHeader);
+//NS_OBJECT_ENSURE_REGISTERED(AnnouncementHeader);
 
 template class PacketHeader<Interest>;
 template class PacketHeader<Data>;
-template class PacketHeader<Announcement>;
-template class PacketHeader<Hint>;
-template class PacketHeader<Vicinity>;
-template class PacketHeader<VicinityData>;
+//template class PacketHeader<Announcement>;
 
 } // namespace ndn
 } // namespace ns3

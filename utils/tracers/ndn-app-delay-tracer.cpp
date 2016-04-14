@@ -204,6 +204,9 @@ AppDelayTracer::Connect()
 
   Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/FirstInterestDataDelay",
                                 MakeCallback(&AppDelayTracer::FirstInterestDataDelay, this));
+
+  Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/ServedData",
+                                MakeCallback(&AppDelayTracer::ServedData, this));
 }
 
 void
@@ -215,7 +218,7 @@ AppDelayTracer::PrintHeader(std::ostream& os) const
      << "\t"
      << "AppId"
      << "\t"
-     << "SeqNo"
+     << "Object"
      << "\t"
 
      << "Type"
@@ -231,25 +234,34 @@ AppDelayTracer::PrintHeader(std::ostream& os) const
 }
 
 void
-AppDelayTracer::LastRetransmittedInterestDataDelay(Ptr<App> app, uint32_t seqno, Time delay,
+AppDelayTracer::LastRetransmittedInterestDataDelay(Ptr<App> app, Name object, Time delay,
                                                    int32_t hopCount)
 {
   *m_os << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t" << app->GetId() << "\t"
-        << seqno << "\t"
+        << object << "\t"
         << "LastDelay"
         << "\t" << delay.ToDouble(Time::S) << "\t" << delay.ToDouble(Time::US) << "\t" << 1 << "\t"
         << hopCount << "\n";
 }
 
 void
-AppDelayTracer::FirstInterestDataDelay(Ptr<App> app, uint32_t seqno, Time delay, uint32_t retxCount,
+AppDelayTracer::FirstInterestDataDelay(Ptr<App> app, Name object, Time delay, uint32_t retxCount,
                                        int32_t hopCount)
 {
   *m_os << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t" << app->GetId() << "\t"
-        << seqno << "\t"
+        << object << "\t"
         << "FullDelay"
         << "\t" << delay.ToDouble(Time::S) << "\t" << delay.ToDouble(Time::US) << "\t" << retxCount
         << "\t" << hopCount << "\n";
+}
+
+void
+AppDelayTracer::ServedData(Ptr<App> app, Name object)
+{
+  *m_os << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t" << app->GetId() << "\t"
+        << object << "\t"
+        << "ServedData"
+        << "\t" << "0" << "\t" << "0" << "\t" << "0" << "\t" << "0" << "\n";
 }
 
 } // namespace ndn

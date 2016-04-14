@@ -168,15 +168,18 @@ public:
   void
   Print(std::ostream& os) const;
 
+  void
+  EventPrint(std::ostream& os, std::string event, Name object) const;
+
 private:
   void
   Connect();
 
   void
-  CacheHits(shared_ptr<const Interest>, shared_ptr<const Data>);
+  CacheHits(shared_ptr<const Interest> interest, shared_ptr<const Data> data);
 
   void
-  CacheMisses(shared_ptr<const Interest>);
+  CacheMisses(shared_ptr<const Interest> interest);
 
 private:
   void
@@ -187,6 +190,9 @@ private:
 
   void
   PeriodicPrinter();
+
+  void
+  EventPrinter(std::string event, Name object);
 
 private:
   std::string m_node;

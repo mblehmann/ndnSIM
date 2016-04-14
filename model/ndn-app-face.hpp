@@ -66,17 +66,8 @@ public: // from nfd::Face
   virtual void
   sendData(const Data& data);
 
-  virtual void
-  sendAnnouncement(const Announcement& announcement);
-
-  virtual void
-  sendHint(const Hint& hint);
-
-  virtual void
-  sendVicinity(const Vicinity& vicinity);
-
-  virtual void
-  sendVicinityData(const VicinityData& vicinityData);
+//  virtual void
+//  sendAnnouncement(const Announcement& announcement);
 
   /**
    * @brief Send Interest towards NFD
@@ -90,17 +81,8 @@ public: // from nfd::Face
   void
   onReceiveData(const Data& data);
 
-  void
-  onReceiveAnnouncement(const Announcement& announcement);
-
-  void
-  onReceiveHint(const Hint& hint);
-
-  void
-  onReceiveVicinity(const Vicinity& vicinity);
-
-  void
-  onReceiveVicinityData(const VicinityData& vicinityData);
+//  void
+//  onReceiveAnnouncement(const Announcement& announcement);
 
   virtual void
   close();

@@ -132,11 +132,13 @@ private:
   Connect();
 
   void
-  LastRetransmittedInterestDataDelay(Ptr<App> app, uint32_t seqno, Time delay, int32_t hopCount);
+  LastRetransmittedInterestDataDelay(Ptr<App> app, Name object, Time delay, int32_t hopCount);
 
   void
-  FirstInterestDataDelay(Ptr<App> app, uint32_t seqno, Time delay, uint32_t rextCount,
+  FirstInterestDataDelay(Ptr<App> app, Name object, Time delay, uint32_t rextCount,
                          int32_t hopCount);
+  void
+  ServedData(Ptr<App> app, Name object);
 
 private:
   std::string m_node;

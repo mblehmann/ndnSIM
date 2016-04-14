@@ -225,6 +225,12 @@ CsTracer::PeriodicPrinter()
 }
 
 void
+CsTracer::EventPrinter(std::string event, Name object)
+{
+  EventPrint(*m_os, event, object);
+}
+
+void
 CsTracer::PrintHeader(std::ostream& os) const
 {
   os << "Time"
@@ -259,15 +265,27 @@ CsTracer::Print(std::ostream& os) const
 }
 
 void
-CsTracer::CacheHits(shared_ptr<const Interest>, shared_ptr<const Data>)
+CsTracer::EventPrint(std::ostream& os, std::string event, Name object) const
 {
-  m_stats.m_cacheHits++;
+  Time time = Simulator::Now();
+
+  os << time.ToDouble(Time::S) << "\t" << m_node << "\t" << event << "\t" << object  << "\n"; 
 }
 
 void
-CsTracer::CacheMisses(shared_ptr<const Interest>)
+CsTracer::CacheHits(shared_ptr<const Interest> interest, shared_ptr<const Data> data)
+{
+  m_stats.m_cacheHits++;
+  
+  EventPrinter("EntryHit", interest->getName());
+}
+
+void
+CsTracer::CacheMisses(shared_ptr<const Interest> interest)
 {
   m_stats.m_cacheMisses++;
+  
+  EventPrinter("EntryMiss", interest->getName());
 }
 
 } // namespace ndn

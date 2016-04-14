@@ -36,11 +36,17 @@ namespace ndn {
 	
 using ::ndn::Name;
 
-class NameService : public Object
+struct objectProperties {
+  double popularity;
+  uint32_t size;
+//  double lifetime;
+};
+
+class Catalog : public Object
 {
 public:
-  NameService();
-  ~NameService();
+  Catalog();
+  ~Catalog();
   
   void
   addUser(Ptr<Node> user);
@@ -54,27 +60,69 @@ public:
   vector<Ptr<Node>>
   getRouters();
 
-  void
-  setCatalogSize(uint32_t catalogSize);
-  
-  /* added by prlanzarin */
+  Time
+  getMaxSimulationTime();
 
-  // Content popularity management
   void
-  initializePopularity(double alpha);
+  setMaxSimulationTime(Time maxSimulationTime);
+
+  uint32_t
+  getUserPopulationSize();
+
+  void
+  setUserPopulationSize(uint32_t userPopulationSize);
+
+  void
+  setPopularity(double alpha, uint32_t maxRequests);
+
+  void 
+  setObjectPopularityVariation(double stddev);
+
+  void 
+  setObjectSize(double mean, double stddev);
+
+//  void
+//  setObjectLifetime(double mean, double stddev);
+
+  void
+  initializeCatalog();
+
+  void
+  addObject(Name objectName, double popularity);
+
+  objectProperties
+  getObjectProperties(Name objectName);
+
+  void
+  removeObject(Name objectName);
+
+  double
+  getUserPopularity();
+
+private: 
+  void
+  initializePopularity();
   
+  void
+  initializeObjectSize();
+
+//  void
+//  initializeObjectLifetime();
+
   double 
   getNextPopularity();
 
   double
-  getContentPopularity(uint32_t rank);
+  getPopularity(uint32_t rank);
 
-  // Content size managenement
-  void
-  initializeObjectSize(double mean, double stddev);
+  double
+  getNextObjectPopularity(double popularity);
 
   uint32_t
   getNextObjectSize();
+
+//  double
+//  getNextObjectLifetime();
 
 private:
   vector<Ptr<Node>> m_users;
@@ -82,12 +130,25 @@ private:
 
   vector<uint32_t> m_popularityIndex;
 
+  Ptr<NormalRandomVariable> m_objectPopularity;
   Ptr<NormalRandomVariable> m_objectSize;
+//  Ptr<NormalRandomVariable> m_objectLifetime;
 
-  uint32_t m_catalogSize;
-  double m_alpha;
-  double m_base;
+  Time m_maxSimulationTime;
+  uint32_t m_userPopulationSize;
 
+  double m_maxRequests;
+  double m_objectPopularityAlpha;
+  double m_objectPopularityBase;
+  double m_objectPopularityStddev;
+
+  double m_objectSizeMean;
+  double m_objectSizeStddev;
+
+//  double m_objectLifetimeMean;
+//  double m_objectLifetimeStddev;
+
+  map<Name, objectProperties> m_objects;
 };
 
 } // namespace ndn

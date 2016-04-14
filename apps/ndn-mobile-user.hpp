@@ -59,6 +59,9 @@ public:
   // Constructor
   MobileUser();
 
+  void
+  EndGame();
+
   // Retransmission Control
   virtual void
   SetRetxTimer(Time retxTimer);
@@ -69,40 +72,49 @@ public:
   virtual void
   CheckRetxTimeout();
 
+  void
+  BlockPrinter(const Block& block);
+
   // Packet/Event Handlers
   virtual void
   OnData(shared_ptr<const Data> contentObject);
 
   virtual void
+  respondVicinityData(shared_ptr<const Data> contentObject);
+
+  virtual void
+  respondData(shared_ptr<const Data> contentObject);
+
+  virtual void
   OnInterest(shared_ptr<const Interest> interest);
+
+  virtual void
+  respondHint(shared_ptr<const Interest> interest);
+
+  virtual void
+  respondVicinity(shared_ptr<const Interest> interest);
+
+  virtual void
+  respondInterest(shared_ptr<const Interest> interest);
 
   virtual void
   OnTimeout(Name objectName);
 
-  virtual void
-  OnAnnouncement(shared_ptr<const Announcement> announcement);
-
-  virtual void
-  OnHint(shared_ptr<const Hint> hint);
-
-  virtual void
-  OnVicinity(shared_ptr<const Vicinity> vicinity);
-
-  virtual void
-  OnVicinityData(shared_ptr<const VicinityData> vicinityData);
+//  virtual void
+//  OnAnnouncement(shared_ptr<const Announcement> announcement);
 
   // Consumer
   void 
-  SendInterestPacket();
+  SendInterestPacket(bool timeout);
 
   virtual void
   WillSendOutInterest(Name objectName);
 
   virtual void
-  ScheduleNextInterestPacket();
+  ScheduleNextInterestPacket(bool timeout);
 
   virtual void
-  AddInterestObject(Name objectName, uint32_t chunks);
+  AddInterestObject(Name objectName);
 
   virtual void
   ConcludeObjectDownload(Name objectName);
@@ -115,6 +127,9 @@ public:
   AnnounceContent(Name object);
 
   // Producer
+//  virtual void
+//  ExpireContent(Name expiredObject);
+
   virtual void
   PublishContent();
 
@@ -122,20 +137,23 @@ public:
   CreateContentName();
 
   virtual void
-  AdvertiseContent(Name object, uint32_t chunks);
+  GenerateContent(Name object);
+
+  virtual void
+  AdvertiseContent(Name object);
 
   // Strategy
   virtual void
   DiscoverVicinity(Name object);
 
   virtual void
-  PushContent(Name objectName, uint32_t chunks);
+  PushContent(Name objectName);
 
   virtual int
   SelectDevice();
 
   virtual void
-  SendContent(int deviceID, Name object, uint32_t chunks);
+  HintContent(int deviceID, Name object);
 
   // Mobility
   virtual void
@@ -146,9 +164,6 @@ public:
 
   void
   CourseChange(Ptr<const MobilityModel> model);
-
-//  void
-//  CourseChangeCallback(string path, Ptr<const MobilityModel> model);
 
 protected:
 
@@ -168,6 +183,7 @@ private:
   Time m_interestLifeTime;
 
   // Content producing variables
+  Time m_publishTime;
   Name m_prefix;
   Name m_postfix;
   uint32_t m_virtualPayloadSize;
@@ -176,25 +192,37 @@ private:
   uint32_t m_signature;
   Name m_keyLocator;
 
+  double m_popularity;
+
   // Object requesting data structures
   vector<Name> m_interestQueue;
   list<Name> m_pendingObjects;
   vector<Name> m_retxNames;
 
-  uint32_t m_windowSize;
+  float m_windowSize;
+  uint32_t m_initialWindowSize;
   uint32_t m_pendingInterests;
 
+  bool m_movingInterest;
+  bool m_movingPublish;
+  bool m_movingPush;
+  Name m_lastObject;
+
   // Content providing data structures
+  uint32_t m_cacheSize;
   vector<Name> m_providedObjects;
+  vector<Name> m_downloadedObjects;
   vector<Name> m_generatedContent;
 
   // Shared global variables
-  Ptr<NameService> m_nameService;
+  Ptr<Catalog> m_catalog;
   Ptr<UniformRandomVariable> m_rand;
 
   //Pushing strategy data structures
   vector<int> m_vicinity;
   Time m_vicinityTimer;
+  Time m_hintTimer;
+  uint32_t m_vicinitySize;
   uint32_t m_replicationDegree;
 
   // Structures for retransmission 
@@ -206,6 +234,7 @@ private:
 
   TracedCallback<Ptr<App>, Name, Time, int32_t> m_lastRetransmittedInterestDataDelay;
   TracedCallback<Ptr<App>, Name, Time, uint32_t, int32_t> m_firstInterestDataDelay;
+  TracedCallback<Ptr<App>, Name> m_servedData;
  
   SequenceNumber32 m_chunksRetrieved;
   map<Name, SequenceNumber32> m_chunkOrder;
