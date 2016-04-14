@@ -1,6 +1,8 @@
 [submodule "NFD"]
 	path = NFD
 	url = https://github.com/mblehmann/NFD
+        branch = master
 [submodule "ndn-cxx"]
 	path = ndn-cxx
 	url = https://github.com/mblehmann/ndn-cxx
+        branch = master
