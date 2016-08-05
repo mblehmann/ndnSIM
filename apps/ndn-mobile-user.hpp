@@ -80,22 +80,22 @@ public:
   OnData(shared_ptr<const Data> contentObject);
 
   virtual void
-  respondVicinityData(shared_ptr<const Data> contentObject);
+  RespondVicinityData(shared_ptr<const Data> contentObject);
 
   virtual void
-  respondData(shared_ptr<const Data> contentObject);
+  RespondData(shared_ptr<const Data> contentObject);
 
   virtual void
   OnInterest(shared_ptr<const Interest> interest);
 
   virtual void
-  respondHint(shared_ptr<const Interest> interest);
+  RespondHint(shared_ptr<const Interest> interest);
 
   virtual void
-  respondVicinity(shared_ptr<const Interest> interest);
+  RespondVicinity(shared_ptr<const Interest> interest);
 
   virtual void
-  respondInterest(shared_ptr<const Interest> interest);
+  RespondInterest(shared_ptr<const Interest> interest);
 
   virtual void
   OnTimeout(Name objectName);
@@ -144,7 +144,7 @@ public:
 
   // Strategy
   virtual void
-  DiscoverVicinity(Name object);
+  ProbeVicinity(Name object);
 
   virtual void
   PushContent(Name objectName);
@@ -224,6 +224,17 @@ private:
   Time m_hintTimer;
   uint32_t m_vicinitySize;
   uint32_t m_replicationDegree;
+
+  // Content Placement Policies structures
+  // THIS IS A TEMPORARY SOLUTION
+  int32_t m_userAvailability;
+  string m_probingModel;
+  bool m_userInterested;
+
+  // Vicinity Probing Thresholds 
+  // THIS IS A TEMPORARY SOLUTION
+  int32_t m_availabilityThreshold;
+  bool m_interestedThreshold;
 
   // Structures for retransmission 
   map<Name, Time> m_nameTimeouts;

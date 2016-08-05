@@ -197,6 +197,21 @@ MobileUser::StartApplication()
   Vector pos = mob->GetPosition();
   m_popularity = m_catalog->getUserPopularity();
 
+  // Set probing model - NOT FINAL SOLUTION
+  //m_probingModel = "ranked";
+  m_probingModel = "random";
+
+  // Set Availability and Interested attributes for each user
+  //m_userAvailability = 1;
+  m_userAvailability = (uint32_t) m_rand->GetValue(1,3);
+  m_userInterested = true;
+
+  //NS_LOG_DEBUG("Node " << GetNode()->GetId() << " initial availability " << m_userAvailability);
+
+  // Set thresholds for vicinity probing - TEMPORARY SOLUTION
+  m_availabilityThreshold = 1; 
+  m_interestedThreshold = true;
+ 
   NS_LOG_DEBUG("Node " << GetNode()->GetId() << " initial position at router " << pos.x << " with popularity " << m_popularity);
 
   if (!m_publishTime.IsZero())
@@ -347,20 +362,20 @@ MobileUser::OnInterest(shared_ptr<const Interest> interest)
 
   if (Name("/hint").isPrefixOf(objectName))
   {
-    respondHint(interest);
+    RespondHint(interest);
   }
   else if (Name("/vicinity").isPrefixOf(objectName))
   {
-    respondVicinity(interest);
+    RespondVicinity(interest);
   }
   else
   {
-    respondInterest(interest);
+    RespondInterest(interest);
   }
 
 }
 void
-MobileUser::respondHint(shared_ptr<const Interest> interest)
+MobileUser::RespondHint(shared_ptr<const Interest> interest)
 {
   Name objectName = interest->getName().getSubName(1, 2);
   uint32_t nodeId = interest->getNodeId();
@@ -381,7 +396,7 @@ MobileUser::respondHint(shared_ptr<const Interest> interest)
 }
 
 void
-MobileUser::respondVicinity(shared_ptr<const Interest> interest)
+MobileUser::RespondVicinity(shared_ptr<const Interest> interest)
 {
   Name objectName = interest->getName();
 
@@ -390,12 +405,40 @@ MobileUser::respondVicinity(shared_ptr<const Interest> interest)
   vicinityData->setName(objectName);
   vicinityData->setFreshnessPeriod(::ndn::time::milliseconds(0));
 
-  StrategySelectors responseData = interest->getStrategySelectors();
-  responseData.setNodeId(this->GetNode()->GetId());
-  responseData.setInterested(true);
-  responseData.setAvailability(1);
-
-  vicinityData->setContent(responseData.wireEncode());
+  // Create an empty strategy selector for the Vicinity Data packet 
+  StrategySelectors responseSelectors = StrategySelectors();
+  // Store strategy selectors from incoming Vicinity packet (Producer Thresholds)
+  StrategySelectors incomingSelectors = interest->getStrategySelectors();
+ 
+  //NS_LOG_DEBUG("Node " << this->GetNode()->GetId() << " received vicinity probing with parameters " << incomingSelectors.getInterested() << " / " << incomingSelectors.getAvailability());
+ 
+  // Will call method to compare user parameters with incomingData parameters
+  // for now, the comparison is made directly in this method
+  /* First step, test incomingSelectors for default values.
+        If the values are different, the user will send a response according
+          to the thresholds set by the Producer
+        In case the selectors are default, the Producer doesnt need any information.
+  */
+  if(!incomingSelectors.empty())
+  {
+    responseSelectors.setNodeId(this->GetNode()->GetId());
+    
+    // compare user interest with producer thresholds
+    if(m_userInterested == incomingSelectors.getInterested())
+    {
+      responseSelectors.setInterested(m_userInterested);
+    }
+    
+    // compare user availability with producer threshold
+    if(m_userAvailability <= incomingSelectors.getAvailability())
+    {
+      responseSelectors.setAvailability(m_userAvailability);
+    }
+  }
+  
+  //NS_LOG_DEBUG("Node " << this->GetNode()->GetId() << " responded vicinity probing with parameters " << responseSelectors.getInterested() << " / " << responseSelectors.getAvailability());
+  
+  vicinityData->setContent(responseSelectors.wireEncode());
 
   // Add signature
   Signature signature;
@@ -410,7 +453,7 @@ MobileUser::respondVicinity(shared_ptr<const Interest> interest)
 
   vicinityData->setSignature(signature);
 
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " responded vicinity discovery for object " << vicinityData->getName());
+  //NS_LOG_DEBUG("Node " << GetNode()->GetId() << " responded vicinity discovery for object " << vicinityData->getName());
 
   // Send the packet
   vicinityData->wireEncode();
@@ -420,7 +463,7 @@ MobileUser::respondVicinity(shared_ptr<const Interest> interest)
 }
 
 void
-MobileUser::respondInterest(shared_ptr<const Interest> interest)
+MobileUser::RespondInterest(shared_ptr<const Interest> interest)
 {
   Name dataName(interest->getName());
 
@@ -470,29 +513,49 @@ MobileUser::OnData(shared_ptr<const Data> data)
 
   if (Name("/vicinity").isPrefixOf(objectName))
   {
-    respondVicinityData(data);
+    RespondVicinityData(data);
   }
   else
   {
-    respondData(data);
+    RespondData(data);
   }
 }
 
 void
-MobileUser::respondVicinityData(shared_ptr<const Data> data)
+MobileUser::RespondVicinityData(shared_ptr<const Data> data)
 {
   Block block = data->getContent();
   block.parse();
-  StrategySelectors responseData = StrategySelectors(*block.elements_begin()); 
+  StrategySelectors incomingSelectors = StrategySelectors(*block.elements_begin()); 
  
-  m_vicinity.push_back(responseData.getNodeId());
+  /* Depending on the probing model the producer will deal with the
+      Vicinity Response accordingly. 
+  */
+  if(!m_probingModel.compare("ranked"))
+  { 
+    if(incomingSelectors.getInterested() && incomingSelectors.getAvailability() != -1)
+    {
+      NS_LOG_DEBUG("Node " << incomingSelectors.getNodeId() << " was added to node " << GetNode()->GetId() << " vicinity");
+      m_vicinity.push_back(incomingSelectors.getNodeId());
+    }
+    else 
+      NS_LOG_DEBUG("Node " << incomingSelectors.getNodeId() << " was NOT added to node " << GetNode()->GetId() << " vicinity");
+  }
+  
+  if(!m_probingModel.compare("random"))
+  {
+    NS_LOG_DEBUG("Node " << incomingSelectors.getNodeId() << " was added to node " << GetNode()->GetId() << " vicinity");
+    m_vicinity.push_back(incomingSelectors.getNodeId());
+  }
 }
 
 void
-MobileUser::respondData(shared_ptr<const Data> data)
+MobileUser::RespondData(shared_ptr<const Data> data)
 {
   Name objectName = data->getName();
-
+ 
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " got data packet for object " << objectName);
+ 
   // Update the pending interest requests
   m_pendingObjects.remove(objectName);
   m_pendingInterests--;
@@ -541,7 +604,7 @@ MobileUser::respondData(shared_ptr<const Data> data)
     FwHopCountTag hopCountTag;
     if (ns3PacketTag->getPacket()->PeekPacketTag(hopCountTag)) {
       hopCount = hopCountTag.Get();
-      NS_LOG_DEBUG("Hop count: " << hopCount);
+      //NS_LOG_DEBUG("Hop count: " << hopCount);
     }
   }
 
@@ -849,7 +912,7 @@ MobileUser::PublishContent()
 
   if (m_vicinitySize > 0)
   {
-    DiscoverVicinity(newObject);
+    ProbeVicinity(newObject);
   }
 
   if (m_replicationDegree > 0)
@@ -883,7 +946,7 @@ MobileUser::CreateContentName()
 void
 MobileUser::GenerateContent(Name object)
 {
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " published object " << object << " " << m_popularity);
+  //NS_LOG_DEBUG("Node " << GetNode()->GetId() << " published object " << object << " " << m_popularity);
   m_catalog->addObject(object, m_popularity);
 
   objectProperties p = m_catalog->getObjectProperties(object);
@@ -926,7 +989,7 @@ MobileUser::AdvertiseContent(Name newObject)
  * Sends a vicinity packet with a given scope.
  */
 void
-MobileUser::DiscoverVicinity(Name object)
+MobileUser::ProbeVicinity(Name object)
 {
   m_vicinity.clear();
 
@@ -942,6 +1005,15 @@ MobileUser::DiscoverVicinity(Name object)
 
   vicinity->setScope(m_vicinitySize);
 
+  // In this step the vicinity packet is set with the producer threshold
+  // Threshold values will determine the type of probing performed (ranked, limited ranked, random)
+  if(!m_probingModel.compare("ranked"))
+  {
+    vicinity->setInterested(m_interestedThreshold);
+    vicinity->setAvailability(m_availabilityThreshold);
+  }
+  //NS_LOG_DEBUG("Node " << GetNode()->GetId() << " sent vicinity probing packet " << vicinity->getName());
+  
   // Send the packet
   vicinity->wireEncode();
 
@@ -1060,7 +1132,7 @@ MobileUser::Session(Ptr<const MobilityModel> model)
   }
   NS_LOG_DEBUG("Node " << GetNode()->GetId() << " started session at router " << pos.x);
 
-  AnnounceContent();
+  AnnounceContent(); //AnnounceContent is commented out. This call does nothing.
 
   if (m_movingInterest)
   {

@@ -103,79 +103,104 @@ main(int argc, char* argv[])
 
   ifstream infile(inputfile + ".in");
   
-  infile >> parameter >> simulation_time;
-  cout << simulation_time << endl;
-  infile >> parameter >> seed;
-  infile >> parameter >> run;
-
-  infile >> parameter >> s_movement;
-  if (!s_movement.compare("Uniform"))
+  while(!infile.eof())
   {
-    Time movement_min;
-    Time movement_max;
-    infile >> parameter >> movement_min;
-    infile >> parameter >> movement_max;
-    movement = CreateObject<UniformRandomVariable>();
-    movement->SetAttribute("Min", DoubleValue(movement_min.GetMinutes()));
-    movement->SetAttribute("Max", DoubleValue(movement_max.GetMinutes()));
+    infile >> parameter;
+    if(parameter == "simulation_time")
+    {
+      infile >> simulation_time;
+      cout << simulation_time << endl;
+    }
+    else if(parameter == "seed")
+      infile >> seed;
+    else if(parameter == "run")
+      infile >> run;
+    else if(parameter == "movement_distribution")
+    {
+      infile >> s_movement;
+      if (!s_movement.compare("Uniform"))
+      {
+        Time movement_min;
+        Time movement_max;
+        infile >> parameter >> movement_min;
+        infile >> parameter >> movement_max;
+        movement = CreateObject<UniformRandomVariable>();
+        movement->SetAttribute("Min", DoubleValue(movement_min.GetMinutes()));
+        movement->SetAttribute("Max", DoubleValue(movement_max.GetMinutes()));
+      }
+      else if (!s_movement.compare("Constant"))
+      {
+        Time movement_constant;
+        infile >> parameter >> movement_constant;
+        movement = CreateObject<ConstantRandomVariable>();
+        movement->SetAttribute("Constant", DoubleValue(movement_constant.GetMinutes()));
+      }
+    }
+    else if(parameter == "session_distribution")
+    {
+      infile >> s_session;
+      if (!s_session.compare("Pareto"))
+      {
+        double session_mean;
+        double session_shape;
+        double session_bound;
+        infile >> parameter >> session_mean;
+        infile >> parameter >> session_shape;
+        infile >> parameter >> session_bound;
+        session = CreateObject<ParetoRandomVariable>();
+        session->SetAttribute("Mean", DoubleValue(session_mean));
+        session->SetAttribute("Shape", DoubleValue(session_shape));
+        session->SetAttribute("Bound", DoubleValue(session_bound));
+      }
+      else if (!s_session.compare("Constant"))
+      {
+        Time session_constant;
+        infile >> parameter >> session_constant;
+        session = CreateObject<ConstantRandomVariable>();
+        session->SetAttribute("Constant", DoubleValue(session_constant.GetMinutes()));
+      }
+    }
+    else if(parameter == "vicinity_size")
+      infile >> vicinity_size; 
+    else if(parameter == "replication_degree")
+      infile >> replication_degree;
+    else if(parameter == "number_nodes")
+      infile >> n_nodes;
+    else if(parameter == "number_routers")
+      infile >> n_routers;
+    else if(parameter == "number_users")
+      infile >> n_users;
+    else if(parameter == "topology")
+      infile >> topology;
+    else if(parameter == "catalog_size")
+      infile >> catalog_size;
+    else if(parameter == "max_consumers")
+      infile >> max_consumers;
+    else if(parameter == "popularity_alpha")
+      infile >> popularity_alpha;
+    else if(parameter == "size_mean")
+      infile >> size_mean;
+    else if(parameter == "size_stddev")
+      infile >> size_stddev;
+    else if(parameter == "cache_size")
+      infile >> cache_size;
+    else if(parameter == "window_size")
+      infile >> window_size;
+    else if(parameter == "payload_size")
+      infile >> payload_size;
+    else if(parameter == "min_publish_time")
+      infile >> min_publish_time;
+    else if(parameter == "max_publish_time")
+      infile >> max_publish_time;
+    else if(parameter == "max_packets")
+      infile >> max_packets;
   }
-  else if (!s_movement.compare("Constant"))
-  {
-    Time movement_constant;
-    infile >> parameter >> movement_constant;
-    movement = CreateObject<ConstantRandomVariable>();
-    movement->SetAttribute("Constant", DoubleValue(movement_constant.GetMinutes()));
-  }
-
-  infile >> parameter >> s_session;
-  if (!s_session.compare("Pareto"))
-  {
-    double session_mean;
-    double session_shape;
-    double session_bound;
-    infile >> parameter >> session_mean;
-    infile >> parameter >> session_shape;
-    infile >> parameter >> session_bound;
-    session = CreateObject<ParetoRandomVariable>();
-    session->SetAttribute("Mean", DoubleValue(session_mean));
-    session->SetAttribute("Shape", DoubleValue(session_shape));
-    session->SetAttribute("Bound", DoubleValue(session_bound));
-  }
-  else if (!s_session.compare("Constant"))
-  {
-    Time session_constant;
-    infile >> parameter >> session_constant;
-    session = CreateObject<ConstantRandomVariable>();
-    session->SetAttribute("Constant", DoubleValue(session_constant.GetMinutes()));
-  }
-
-  infile >> parameter >> vicinity_size;
-  infile >> parameter >> replication_degree;
-  infile >> parameter >> n_nodes;
-  infile >> parameter >> n_routers;
-  infile >> parameter >> n_users;
-  infile >> parameter >> topology;
-//  infile >> parameter >> data_rate;
-//  infile >> parameter >> delay;
-//  infile >> parameter >> max_packets;
-  infile >> parameter >> catalog_size;
-  infile >> parameter >> max_consumers;
-  infile >> parameter >> popularity_alpha;
-  infile >> parameter >> size_mean;
-  infile >> parameter >> size_stddev;
-//  infile >> parameter >> lifetime_mean;
-//  infile >> parameter >> lifetime_stddev;
-  infile >> parameter >> cache_size;
-  infile >> parameter >> window_size;
-  infile >> parameter >> payload_size;
-  infile >> parameter >> min_publish_time;
-  infile >> parameter >> max_publish_time;
 
   RngSeedManager::SetSeed(seed);
   RngSeedManager::SetRun(run);  
 
   AnnotatedTopologyReader topologyReader("", 1);
-  topologyReader.SetFileName("/home/matheus/icn-2016/" + topology);
+  topologyReader.SetFileName("/home/lleal/scripts-ndnSIM/" + topology);
   topologyReader.Read();
 
   NodeContainer routerNodes;
