@@ -47,6 +47,31 @@ const time::milliseconds DEFAULT_VICINITY_TIMER = time::milliseconds(30000); // 
 
 const uint32_t DEFAULT_REPLICATION_DEGREE = 1; // 1 replica
 
+/** 
+ * @brief A wrap used by the device ranking mechanism containing the relevant User information.
+ */
+
+class UserInformation {
+public:
+  // Constructor
+  UserInformation(uint32_t, uint32_t, bool);
+
+  // Geters
+  uint32_t
+  GetNodeId() { return m_nodeId; }
+
+  uint32_t
+  GetAvailability() { return m_availability; }
+
+  bool
+  GetInterested() { return m_interested; }
+  
+private:
+  uint32_t m_nodeId;
+  uint32_t m_availability;
+  bool m_interested;
+};
+
 /**
  * @ingroup ndn-apps
  * @brief A mobile consumer that requests multiple objects with varied number of chunks.
@@ -91,7 +116,7 @@ public:
   virtual void
   RespondHint(shared_ptr<const Interest> interest);
 
-  virtual void
+  virtual uint32_t
   RespondVicinity(shared_ptr<const Interest> interest);
 
   virtual void
@@ -147,10 +172,13 @@ public:
   ProbeVicinity(Name object);
 
   virtual void
+  SortVicinity();
+
+  virtual void
   PushContent(Name objectName);
 
   virtual int
-  SelectDevice();
+  SelectRandomDevice();
 
   virtual void
   HintContent(int deviceID, Name object);
@@ -164,6 +192,18 @@ public:
 
   void
   CourseChange(Ptr<const MobilityModel> model);
+
+  uint32_t
+  GetAvailability()
+  {
+    return m_userAvailability;
+  }
+
+  uint32_t
+  GetInterested()
+  {
+    return m_userInterested;
+  }
 
 protected:
 
@@ -219,7 +259,7 @@ private:
   Ptr<UniformRandomVariable> m_rand;
 
   //Pushing strategy data structures
-  vector<int> m_vicinity;
+  vector<UserInformation> m_vicinity;
   Time m_vicinityTimer;
   Time m_hintTimer;
   uint32_t m_vicinitySize;
@@ -230,6 +270,7 @@ private:
   int32_t m_userAvailability;
   string m_probingModel;
   bool m_userInterested;
+  bool m_hintProbing;
 
   // Vicinity Probing Thresholds 
   // THIS IS A TEMPORARY SOLUTION
