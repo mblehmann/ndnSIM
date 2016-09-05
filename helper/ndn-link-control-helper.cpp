@@ -84,6 +84,8 @@ LinkControlHelper::setErrorRate(Ptr<Node> node1, Ptr<Node> node2, double errorRa
 
       nd1->SetAttribute("ReceiveErrorModel", PointerValue(errorFactory.Create<ErrorModel>()));
       nd2->SetAttribute("ReceiveErrorModel", PointerValue(errorFactory.Create<ErrorModel>()));
+      if (errorRate == 1.0) face->setMetric(std::numeric_limits<uint16_t>::max() - 1);
+      else face->setMetric(1);
       return;
     }
   }

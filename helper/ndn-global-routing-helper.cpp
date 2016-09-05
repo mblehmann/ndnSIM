@@ -270,6 +270,8 @@ GlobalRoutingHelper::CalculateRoutes()
                          << " with distance " << std::get<1>(dist.second) << " with delay "
                          << std::get<2>(dist.second));
 
+	    FibHelper::RemoveRoutes(*node, *prefix);
+
             FibHelper::AddRoute(*node, *prefix, std::get<0>(dist.second),
                                 std::get<1>(dist.second));
           }
@@ -383,6 +385,22 @@ GlobalRoutingHelper::CalculateAllPossibleRoutes()
     for (auto& i : originalMetrics) {
       l3->getForwarder()->getFaceTable().get(i.first)->setMetric(i.second);
     }
+  }
+}
+
+void
+GlobalRoutingHelper::PrintFIBs()
+{
+  for (NodeList::Iterator node = NodeList::Begin(); node != NodeList::End(); node++) {
+   NS_LOG_DEBUG("NODE " << (*node)->GetId());
+   for (const auto& entry : (*node)->GetObject<L3Protocol>()->getForwarder()->getFib()) {
+    NS_LOG_DEBUG(entry.getPrefix() << " (");
+    for (auto& nextHop : entry.getNextHops()) {
+     auto face = dynamic_pointer_cast<ndn::Face>(nextHop.getFace());
+     NS_LOG_DEBUG(face->getId() << " (cost=" << nextHop.getCost() << "), ");
+    }
+    NS_LOG_DEBUG(")");
+   }
   }
 }
 

@@ -111,6 +111,9 @@ public:
   static void
   CalculateAllPossibleRoutes();
 
+  static void
+  PrintFIBs();
+
 private:
   void
   Install(Ptr<Channel> channel);

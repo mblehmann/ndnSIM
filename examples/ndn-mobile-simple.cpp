@@ -104,11 +104,14 @@ main(int argc, char* argv[])
   ifstream infile(inputfile + ".in");
   
   infile >> parameter >> simulation_time;
-  cout << simulation_time << endl;
+  cout << parameter << " " << simulation_time << endl;
   infile >> parameter >> seed;
+  cout << parameter << " " << seed << endl;
   infile >> parameter >> run;
+  cout << parameter << " " << run << endl;
 
   infile >> parameter >> s_movement;
+  cout << parameter << " " << s_movement << endl;
   if (!s_movement.compare("Uniform"))
   {
     Time movement_min;
@@ -123,11 +126,13 @@ main(int argc, char* argv[])
   {
     Time movement_constant;
     infile >> parameter >> movement_constant;
+    cout << parameter << " " << movement_constant << endl;
     movement = CreateObject<ConstantRandomVariable>();
     movement->SetAttribute("Constant", DoubleValue(movement_constant.GetMinutes()));
   }
 
   infile >> parameter >> s_session;
+  cout << parameter << " " << s_session << endl;
   if (!s_session.compare("Pareto"))
   {
     double session_mean;
@@ -145,31 +150,48 @@ main(int argc, char* argv[])
   {
     Time session_constant;
     infile >> parameter >> session_constant;
+    cout << parameter << " " << session_constant << endl;
     session = CreateObject<ConstantRandomVariable>();
     session->SetAttribute("Constant", DoubleValue(session_constant.GetMinutes()));
   }
 
   infile >> parameter >> vicinity_size;
+  cout << parameter << " " << vicinity_size << endl;
   infile >> parameter >> replication_degree;
+  cout << parameter << " " << replication_degree << endl;
   infile >> parameter >> n_nodes;
+  cout << parameter << " " << n_nodes << endl;
   infile >> parameter >> n_routers;
+  cout << parameter << " " << n_routers << endl;
   infile >> parameter >> n_users;
+  cout << parameter << " " << n_users << endl;
   infile >> parameter >> topology;
+  cout << parameter << " " << topology << endl;
 //  infile >> parameter >> data_rate;
 //  infile >> parameter >> delay;
 //  infile >> parameter >> max_packets;
   infile >> parameter >> catalog_size;
+  cout << parameter << " " << catalog_size << endl;
   infile >> parameter >> max_consumers;
+  cout << parameter << " " << max_consumers << endl;
   infile >> parameter >> popularity_alpha;
+  cout << parameter << " " << popularity_alpha << endl;
   infile >> parameter >> size_mean;
+  cout << parameter << " " << size_mean << endl;
   infile >> parameter >> size_stddev;
+  cout << parameter << " " << size_stddev << endl;
 //  infile >> parameter >> lifetime_mean;
 //  infile >> parameter >> lifetime_stddev;
   infile >> parameter >> cache_size;
+  cout << parameter << " " << cache_size << endl;
   infile >> parameter >> window_size;
+  cout << parameter << " " << window_size << endl;
   infile >> parameter >> payload_size;
+  cout << parameter << " " << payload_size << endl;
   infile >> parameter >> min_publish_time;
+  cout << parameter << " " << min_publish_time << endl;
   infile >> parameter >> max_publish_time;
+  cout << parameter << " " << max_publish_time << endl;
 
   RngSeedManager::SetSeed(seed);
   RngSeedManager::SetRun(run);  
@@ -178,6 +200,7 @@ main(int argc, char* argv[])
   topologyReader.SetFileName("/home/matheus/icn-2016/" + topology);
   topologyReader.Read();
 
+  cout << "Creating nodes" << endl;
   NodeContainer routerNodes;
   for (uint32_t i = 0; i < n_routers; i++)
   {
@@ -196,6 +219,7 @@ main(int argc, char* argv[])
     }
   }
 
+  cout << "Install NDN stack on all nodes" << endl;
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetOldContentStore("ns3::ndn::cs::Stats::Lru", "MaxSize", to_string(cache_size));
@@ -204,11 +228,13 @@ main(int argc, char* argv[])
 
   //Config::Connect("/NodeList/*/$ns3::ndn::cs::Stats::Lru/WillRemoveEntry", MakeCallback(CacheEntryRemoved));
 
+  cout << "Choosing forwarding strategy" << endl;
   // Choosing forwarding strategy
   ndn::StrategyChoiceHelper::InstallAll("/", "/localhost/nfd/strategy/multicast");
   ndn::StrategyChoiceHelper::InstallAll("/hint", "/localhost/nfd/strategy/multicast");
   ndn::StrategyChoiceHelper::InstallAll("/vicinity", "/localhost/nfd/strategy/multicast");
 
+  cout << "Installing applications" << endl;
   // Installing applications
   Ptr<ns3::ndn::Catalog> catalog = Create<ns3::ndn::Catalog>();
   for (uint32_t i = 0; i < n_routers; i++)
@@ -228,6 +254,7 @@ main(int argc, char* argv[])
 //  catalog->setObjectLifetime(lifetime_mean, lifetime_stddev);
   catalog->initializeCatalog();
 
+  cout << "Initialize positions of nodes" << endl;
   // Initialize positions of nodes
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
   for (uint32_t i = 0; i < n_routers; i++) {
@@ -236,6 +263,7 @@ main(int argc, char* argv[])
 
   Ptr<UniformRandomVariable> initialization = CreateObject<UniformRandomVariable>();
 
+  cout << "User" << endl;
   // User
   uint32_t producers = 0;
   for (uint32_t i = 0; i < n_users; i++) {
@@ -267,6 +295,7 @@ main(int argc, char* argv[])
 
   MobilityHelper mobility;
 
+  cout << "Initialize positions of nodes" << endl;
   // Initialize positions of nodes
   mobility.SetPositionAllocator(positionAlloc);
 

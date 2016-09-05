@@ -178,6 +178,20 @@ FibHelper::AddRoute(const std::string& nodeName, const Name& prefix,
 }
 
 void
+FibHelper::RemoveRoutes(Ptr<Node> node, const Name& prefix)
+{
+  // Get L3Protocol object
+  Ptr<L3Protocol> L3protocol = node->GetObject<L3Protocol>();
+  // Get the forwarder instance
+  shared_ptr<nfd::Forwarder> m_forwarder = L3protocol->getForwarder();
+
+  for (const auto& face : m_forwarder->getFaceTable())
+  {
+    RemoveRoute(node, prefix, face);
+  }
+}
+
+void
 FibHelper::RemoveRoute(Ptr<Node> node, const Name& prefix, shared_ptr<Face> face)
 {
   // Get L3Protocol object

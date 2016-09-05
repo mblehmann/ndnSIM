@@ -179,6 +179,7 @@ MobileUser::MobileUser()
 void
 MobileUser::StartApplication() 
 {
+  NS_LOG_DEBUG("oi");
   App::StartApplication();
   FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
   FibHelper::AddRoute(GetNode(), "/hint", m_face, 0);
