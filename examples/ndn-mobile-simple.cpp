@@ -103,6 +103,7 @@ main(int argc, char* argv[])
 
   ifstream infile(inputfile + ".in");
   
+<<<<<<< HEAD
   while(!infile.eof())
   {
     infile >> parameter;
@@ -203,6 +204,7 @@ main(int argc, char* argv[])
   topologyReader.SetFileName("/home/lleal/scripts-ndnSIM/" + topology);
   topologyReader.Read();
 
+  cout << "Creating nodes" << endl;
   NodeContainer routerNodes;
   for (uint32_t i = 0; i < n_routers; i++)
   {
@@ -221,6 +223,7 @@ main(int argc, char* argv[])
     }
   }
 
+  cout << "Install NDN stack on all nodes" << endl;
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetOldContentStore("ns3::ndn::cs::Stats::Lru", "MaxSize", to_string(cache_size));
@@ -229,11 +232,13 @@ main(int argc, char* argv[])
 
   //Config::Connect("/NodeList/*/$ns3::ndn::cs::Stats::Lru/WillRemoveEntry", MakeCallback(CacheEntryRemoved));
 
+  cout << "Choosing forwarding strategy" << endl;
   // Choosing forwarding strategy
   ndn::StrategyChoiceHelper::InstallAll("/", "/localhost/nfd/strategy/multicast");
   ndn::StrategyChoiceHelper::InstallAll("/hint", "/localhost/nfd/strategy/multicast");
   ndn::StrategyChoiceHelper::InstallAll("/vicinity", "/localhost/nfd/strategy/multicast");
 
+  cout << "Installing applications" << endl;
   // Installing applications
   Ptr<ns3::ndn::Catalog> catalog = Create<ns3::ndn::Catalog>();
   for (uint32_t i = 0; i < n_routers; i++)
@@ -253,6 +258,7 @@ main(int argc, char* argv[])
 //  catalog->setObjectLifetime(lifetime_mean, lifetime_stddev);
   catalog->initializeCatalog();
 
+  cout << "Initialize positions of nodes" << endl;
   // Initialize positions of nodes
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
   for (uint32_t i = 0; i < n_routers; i++) {
@@ -261,6 +267,7 @@ main(int argc, char* argv[])
 
   Ptr<UniformRandomVariable> initialization = CreateObject<UniformRandomVariable>();
 
+  cout << "User" << endl;
   // User
   uint32_t producers = 0;
   for (uint32_t i = 0; i < n_users; i++) {
@@ -292,6 +299,7 @@ main(int argc, char* argv[])
 
   MobilityHelper mobility;
 
+  cout << "Initialize positions of nodes" << endl;
   // Initialize positions of nodes
   mobility.SetPositionAllocator(positionAlloc);
 
