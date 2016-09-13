@@ -56,7 +56,7 @@ main(int argc, char* argv[])
 {
   // setting default parameters for PointToPoint links and channels
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Mbps"));
-  Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("100000ms"));
+  Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
 
   // Read optional command-line parameters (e.g., enable visualizer with ./waf --run=<> --visualize
@@ -69,6 +69,7 @@ main(int argc, char* argv[])
   NodeContainer nodes;
   nodes.Create(n);
   Ptr<Node> producer = nodes.Get(3);
+  Ptr<Node> homeagent = nodes.Get(1);
 
   // Connecting nodes using two links
   PointToPointHelper p2p;
@@ -103,19 +104,24 @@ main(int argc, char* argv[])
 
   // Installing applications
 
+  string globalprefix = "/global";
+  string localprefix = "/local";
+
   // Probe Consumer
   ndn::AppHelper consumerHelper("ns3::ndn::ProbeConsumer");
   // Consumer will request /prefix/0, /prefix/1, ...
-  consumerHelper.SetPrefix("/prefix");
+  consumerHelper.SetPrefix(globalprefix);
   consumerHelper.SetAttribute("Frequency", StringValue("1")); // 10 interests a second
   consumerHelper.Install(nodes.Get(0));                        // first node
 
+  ndn::AppHelper agentHelper("ns3::ndn::ProbeAgent");
+  agentHelper.Install(homeagent);
+
   // Producer
-  string prefix = "/prefix";
   
   ndn::AppHelper producerHelper("ns3::ndn::ProbeProducer");
   // Producer will reply to all requests starting with /prefix
-  producerHelper.SetPrefix(prefix);
+  producerHelper.SetPrefix(localprefix);
   producerHelper.SetAttribute("PayloadSize", StringValue("0"));
   producerHelper.SetAttribute("Catalog", PointerValue(catalog));
   producerHelper.Install(producer); // last node
@@ -134,7 +140,7 @@ main(int argc, char* argv[])
   
   Ptr<RandomVariableStream> session;
   session = CreateObject<ConstantRandomVariable>();
-  session->SetAttribute("Constant", DoubleValue(1));
+  session->SetAttribute("Constant", DoubleValue(0.5));
 
   // Initialize positions of nodes
   mobility.SetPositionAllocator(positionAlloc);
@@ -148,7 +154,8 @@ main(int argc, char* argv[])
 
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
   ndnGlobalRoutingHelper.InstallAll();
-  ndnGlobalRoutingHelper.AddOrigins(prefix, producer);
+  ndnGlobalRoutingHelper.AddOrigins(globalprefix, homeagent);
+  ndnGlobalRoutingHelper.AddOrigins(localprefix, producer);
 
   // Calculate and install FIBs
   ndn::GlobalRoutingHelper::CalculateRoutes();

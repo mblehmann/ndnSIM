@@ -129,6 +129,11 @@ GlobalRoutingHelper::Install(Ptr<Node> node)
       gr->AddIncidency(face, grChannel);
     }
   }
+
+  for (auto& i : gr->GetIncidencies()) {
+    NS_LOG_DEBUG("INCIDENCY " << get<0>(i) << ", " << get<1>(i) << ", " << get<2>(i));
+  }
+
 }
 
 void
@@ -254,6 +259,12 @@ GlobalRoutingHelper::CalculateRoutes()
 
     Ptr<L3Protocol> L3protocol = (*node)->GetObject<L3Protocol>();
     shared_ptr<nfd::Forwarder> forwarder = L3protocol->getForwarder();
+
+    for (auto& i : L3protocol->getForwarder()->getFaceTable()) {
+      shared_ptr<Face> nfdFace = std::dynamic_pointer_cast<Face>(i);
+      NS_LOG_DEBUG("FACE METRIC: " << nfdFace->getId() << "(" << nfdFace->getMetric() << ")");
+      // value std::numeric_limits<uint16_t>::max () MUST NOT be used (reserved)
+    }
 
     NS_LOG_DEBUG("Reachability from Node: " << source->GetObject<Node>()->GetId());
     for (const auto& dist : distances) {
@@ -394,12 +405,14 @@ GlobalRoutingHelper::PrintFIBs()
   for (NodeList::Iterator node = NodeList::Begin(); node != NodeList::End(); node++) {
    NS_LOG_DEBUG("NODE " << (*node)->GetId());
    for (const auto& entry : (*node)->GetObject<L3Protocol>()->getForwarder()->getFib()) {
+    if (entry.getPrefix().toUri() != "/" && entry.getPrefix().toUri() != "/hint" && entry.getPrefix().toUri() != "/vicinity") {
     NS_LOG_DEBUG(entry.getPrefix() << " (");
     for (auto& nextHop : entry.getNextHops()) {
      auto face = dynamic_pointer_cast<ndn::Face>(nextHop.getFace());
      NS_LOG_DEBUG(face->getId() << " (cost=" << nextHop.getCost() << "), ");
     }
     NS_LOG_DEBUG(")");
+   }
    }
   }
 }

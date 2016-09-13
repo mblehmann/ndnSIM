@@ -29,6 +29,8 @@
 #include "ns3/mobility-module.h"
 
 #include <ns3/ndnSIM/utils/ndn-catalog.hpp>
+#include <ns3/ndnSIM/utils/ndn-mobility-profile.hpp>
+#include <ns3/ndnSIM/utils/ndn-profile-container.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -102,7 +104,7 @@ main(int argc, char* argv[])
   cmd.Parse(argc, argv);
 
   ifstream infile(inputfile + ".in");
-  
+  cout << "Begin simulation " << endl; 
   infile >> parameter >> simulation_time;
   cout << parameter << " " << simulation_time << endl;
   infile >> parameter >> seed;
@@ -154,6 +156,11 @@ main(int argc, char* argv[])
     session = CreateObject<ConstantRandomVariable>();
     session->SetAttribute("Constant", DoubleValue(session_constant.GetMinutes()));
   }
+
+  ns3::ndn::MobilityProfileContainer userProfiles = ns3::ndn::MobilityProfileContainer();
+  ns3::ndn::MobilityProfile mobility_profile = ns3::ndn::MobilityProfile();
+  mobility_profile.SetNumberAp(3);
+//  MobilityProfileContainer
 
   infile >> parameter >> vicinity_size;
   cout << parameter << " " << vicinity_size << endl;
@@ -233,6 +240,8 @@ main(int argc, char* argv[])
   ndn::StrategyChoiceHelper::InstallAll("/", "/localhost/nfd/strategy/multicast");
   ndn::StrategyChoiceHelper::InstallAll("/hint", "/localhost/nfd/strategy/multicast");
   ndn::StrategyChoiceHelper::InstallAll("/vicinity", "/localhost/nfd/strategy/multicast");
+  ndn::StrategyChoiceHelper::InstallAll("/prod0", "/localhost/nfd/strategy/best-route");
+//  ndn::StrategyChoiceHelper::InstallAll("/prod0", "/localhost/nfd/strategy/multicast");
 
   cout << "Installing applications" << endl;
   // Installing applications
@@ -268,7 +277,10 @@ main(int argc, char* argv[])
   uint32_t producers = 0;
   for (uint32_t i = 0; i < n_users; i++) {
     Time publishTime = Minutes(initialization->GetValue(min_publish_time.GetMinutes(), max_publish_time.GetMinutes()));
-    uint32_t pos = (uint32_t) initialization->GetValue(0, n_routers);
+    uint32_t pos;
+    if (i == 0) pos = 2;
+    else if (i == 1) pos = 0;
+    else pos = (uint32_t) initialization->GetValue(0, n_routers);
 
     ndn::AppHelper consumerHelper("ns3::ndn::MobileUser");
     consumerHelper.SetPrefix("/prod" + to_string(i));
@@ -289,7 +301,7 @@ main(int argc, char* argv[])
     for (uint32_t j = 0; j < n_routers; j++) {
       ndn::LinkControlHelper::FailLink(routerNodes.Get(j), userNodes.Get(i));
     }
-
+    cout << "UPLINK: " << pos << " " << i << endl;
     ndn::LinkControlHelper::UpLink(routerNodes.Get(pos), userNodes.Get(i));
   }
 
@@ -299,15 +311,42 @@ main(int argc, char* argv[])
   // Initialize positions of nodes
   mobility.SetPositionAllocator(positionAlloc);
 
+  Ptr<ListPositionAllocator> positionAllocCons = CreateObject<ListPositionAllocator>();
+  positionAllocCons->Add(Vector(0, 0, 0));
+  mobility.SetPositionAllocator(positionAllocCons);
+
   mobility.SetMobilityModel("ns3::OnOffMobilityModel",
                             "Movement", PointerValue(movement),
                             "Session", PointerValue(session),
-                            "PositionAllocator", PointerValue(positionAlloc));
+                            "PositionAllocator", PointerValue(positionAllocCons));
+
+  mobility.Install(userNodes.Get(1));
+
+  Ptr<ListPositionAllocator> positionAllocProd = CreateObject<ListPositionAllocator>();
+  positionAllocProd->Add(Vector(2, 0, 0));
+  positionAllocProd->Add(Vector(3, 0, 0));
+  mobility.SetPositionAllocator(positionAllocProd);
+
+  mobility.SetMobilityModel("ns3::OnOffMobilityModel",
+                            "Movement", PointerValue(movement),
+                            "Session", PointerValue(session),
+                            "PositionAllocator", PointerValue(positionAllocProd));
+
+  mobility.Install(userNodes.Get(0));
+/*
 
   for (uint32_t i = 0; i < n_users; i++) {
     mobility.Install(userNodes.Get(i));
   }
-  
+  */
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+  ndnGlobalRoutingHelper.InstallAll();
+  ndnGlobalRoutingHelper.AddOrigins("/prod0", userNodes.Get(0));
+
+  // Calculate and install FIBs
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
+
   Simulator::Stop(simulation_time);
 
   ndn::L3RateTracer::InstallAll(inputfile + "_rate-trace.txt", Seconds(1));

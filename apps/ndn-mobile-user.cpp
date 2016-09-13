@@ -42,6 +42,7 @@
 
 #include "helper/ndn-fib-helper.hpp"
 
+#include "helper/ndn-global-routing-helper.hpp"
 #include "helper/ndn-link-control-helper.hpp"
 
 #include "ndn-cxx/strategy-selectors.hpp"
@@ -181,7 +182,7 @@ MobileUser::StartApplication()
 {
   NS_LOG_DEBUG("oi");
   App::StartApplication();
-  FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
+  if (m_prefix == "/prod0") FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
   FibHelper::AddRoute(GetNode(), "/hint", m_face, 0);
   FibHelper::AddRoute(GetNode(), "/vicinity", m_face, 0);
 
@@ -909,9 +910,11 @@ MobileUser::AdvertiseContent(Name newObject)
     Ptr<Node> currentUser = users[i];
 
     // If not the publisher
-    if (currentUser->GetId() != this->GetNode()->GetId() && m_rand->GetValue(0, 1) < properties.popularity) {
+    //if (currentUser->GetId() != this->GetNode()->GetId() && m_rand->GetValue(0, 1) < properties.popularity) {
+    if (currentUser->GetId() != this->GetNode()->GetId()) {
       Ptr<MobileUser> mobileUser = DynamicCast<MobileUser> (currentUser->GetApplication(0));
-      double requestTime = m_rand->GetValue(0, (maxSimulationTime - Simulator::Now()).ToDouble(Time::S));
+//      double requestTime = m_rand->GetValue(0, (maxSimulationTime - Simulator::Now()).ToDouble(Time::S));
+      double requestTime = 0;
 
       Simulator::ScheduleWithContext(currentUser->GetId(), Time(to_string(requestTime) + "s"), &MobileUser::AddInterestObject, mobileUser, newObject);
     }
@@ -1099,7 +1102,8 @@ MobileUser::CourseChange(Ptr<const MobilityModel> model)
     m_movingPublish = false;
     m_movingPush = false;
   }
-
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
 }
 
 } // namespace ndn

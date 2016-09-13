@@ -124,8 +124,7 @@ ProbeConsumer::SendPacket()
   interest->setName(*nameWithSequence);
 
   // NS_LOG_INFO ("Requesting Interest: \n" << *interest);
-  NS_LOG_INFO("> Interest for " << seq);
-  NS_LOG_INFO("> Interest for " << interest->getName());
+  NS_LOG_INFO(" >> requesting object " << interest->getName());
 
   m_transmittedInterests(interest, this, m_face);
   m_face->onReceiveInterest(*interest);
@@ -138,7 +137,7 @@ ProbeConsumer::ScheduleNextPacket()
 {
   // double mean = 8.0 * m_payloadSize / m_desiredRate.GetBitRate ();
   // std::cout << "next: " << Simulator::Now().ToDouble(Time::S) + mean << "s\n";
-  m_sendEvent = Simulator::Schedule(Seconds(1.0 / m_frequency), &ProbeConsumer::SendPacket, this);
+  m_sendEvent = Simulator::Schedule(Minutes(1.0 / m_frequency), &ProbeConsumer::SendPacket, this);
 
 }
 
@@ -160,7 +159,7 @@ ProbeConsumer::OnData(shared_ptr<const Data> data)
 
   // This could be a problem......
   uint32_t seq = data->getName().at(-1).toSequenceNumber();
-  NS_LOG_INFO("< DATA for " << seq);
+  NS_LOG_INFO(" << received object data " << data->getName());
 
   int hopCount = 0;
   auto ns3PacketTag = data->getTag<Ns3PacketTag>();

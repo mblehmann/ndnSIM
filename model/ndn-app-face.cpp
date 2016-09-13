@@ -90,6 +90,7 @@ void
 AppFace::onReceiveInterest(const Interest& interest)
 {
   NS_LOG_FUNCTION(this << &interest);
+  NS_LOG_INFO("Receiving interest " << interest.getName());
   this->emitSignal(onReceiveInterest, interest);
 }
 
@@ -97,6 +98,7 @@ void
 AppFace::onReceiveData(const Data& data)
 {
   NS_LOG_FUNCTION(this << &data);
+  NS_LOG_INFO("Receiving data " << data.getName());
   this->emitSignal(onReceiveData, data);
 }
 
