@@ -64,17 +64,6 @@ AppLinkService::doSendData(const Data& data)
   Simulator::ScheduleNow(&App::OnData, m_app, data.shared_from_this());
 }
 
-//void
-//AppFace::sendAnnouncement(const Announcement& announcement)
-//{
-//  NS_LOG_FUNCTION(this << &announcement);
-//
-//  this->emitSignal(onSendAnnouncement, announcement);
-//
-//  // to decouple callbacks
-//  Simulator::ScheduleNow(&App::OnAnnouncement, m_app, announcement.shared_from_this());
-//}
-
 void
 AppLinkService::doSendNack(const lp::Nack& nack)
 {
@@ -95,33 +84,18 @@ AppLinkService::onReceiveInterest(const Interest& interest)
 void
 AppLinkService::onReceiveData(const Data& data)
 {
-<<<<<<< HEAD:model/ndn-app-face.cpp
   NS_LOG_FUNCTION(this << &interest);
-  NS_LOG_INFO("Receiving interest " << interest.getName());
   this->emitSignal(onReceiveInterest, interest);
-=======
   this->receiveData(data);
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f:model/ndn-app-link-service.cpp
 }
 
 void
 AppLinkService::onReceiveNack(const lp::Nack& nack)
 {
-<<<<<<< HEAD:model/ndn-app-face.cpp
   NS_LOG_FUNCTION(this << &data);
-  NS_LOG_INFO("Receiving data " << data.getName());
   this->emitSignal(onReceiveData, data);
-=======
   this->receiveNack(nack);
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f:model/ndn-app-link-service.cpp
 }
-
-//void
-//AppFace::onReceiveAnnouncement(const Announcement& announcement)
-//{
-//  NS_LOG_FUNCTION(this << &announcement);
-//  this->emitSignal(onReceiveAnnouncement, announcement);
-//}
 
 } // namespace ndn
 } // namespace ns3

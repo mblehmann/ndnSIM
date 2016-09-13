@@ -33,8 +33,6 @@
 #include <ndn-cxx/data.hpp>
 #include <ndn-cxx/security/key-chain.hpp>
 
-#include <ndn-cxx/announcement.hpp>
-
 #include <ndn-cxx/util/time.hpp>
 
 #include "NFD/daemon/face/face.hpp"
@@ -71,8 +69,6 @@ using ::ndn::SignatureInfo;
 using ::ndn::Block;
 using ::ndn::KeyChain;
 using ::ndn::StrategySelectors;
-
-//using ::ndn::Announcement;
 
 using ::nfd::Face;
 using ::ndn::util::FaceUri;

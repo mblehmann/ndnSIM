@@ -74,23 +74,17 @@ public:
   virtual void
   OnData(shared_ptr<const Data> data);
 
-<<<<<<< HEAD
-//  virtual void
-//  OnAnnouncement(shared_ptr<const Announcement> announcement);
-=======
    /**
    * @brief Method that will be called every time new Nack arrives
    */
   virtual void
   OnNack(shared_ptr<const lp::Nack> nack);
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f
 
 public:
   typedef void (*InterestTraceCallback)(shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>);
   typedef void (*DataTraceCallback)(shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>);
-  // @TODO add NACK
 
-//  typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
+  // @TODO add NACK
 
 protected:
   virtual void
@@ -119,12 +113,7 @@ protected:
   TracedCallback<shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>>
     m_receivedDatas; ///< @brief App-level trace of received Data
 
-<<<<<<< HEAD
-//  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
-//    m_receivedAnnouncements; ///< @brief App-level trace of received Data
-=======
   // @TODO add NACK
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f
 
   TracedCallback<shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>>
     m_transmittedInterests; ///< @brief App-level trace of transmitted Interests
@@ -132,13 +121,8 @@ protected:
   TracedCallback<shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>>
     m_transmittedDatas; ///< @brief App-level trace of transmitted Data
 
-<<<<<<< HEAD
-//  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
-//    m_transmittedAnnouncements; ///< @brief App-level trace of transmitted Announcement
-
-=======
   // @TODO add NACK
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f
+
 };
 
 } // namespace ndn

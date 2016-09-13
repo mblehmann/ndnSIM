@@ -73,9 +73,6 @@ private:
   virtual void
   doSendData(const ::ndn::Data& data) override;
 
-//  virtual void
-//  sendAnnouncement(const Announcement& announcement);
-
   virtual void
   doSendNack(const ::ndn::lp::Nack& nack) override;
 

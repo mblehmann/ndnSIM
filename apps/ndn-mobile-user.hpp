@@ -100,9 +100,6 @@ public:
   virtual void
   OnTimeout(Name objectName);
 
-//  virtual void
-//  OnAnnouncement(shared_ptr<const Announcement> announcement);
-
   // Consumer
   void 
   SendInterestPacket(bool timeout);

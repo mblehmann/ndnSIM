@@ -567,17 +567,6 @@ MobileUser::respondData(shared_ptr<const Data> data)
 }
 
 /**
- * Announcement packet handler.
- * The application should not receive it.
- * Do nothing.
- */ 
-//void
-//MobileUser::OnAnnouncement(shared_ptr<const Announcement> announcement)
-//{
-//  App::OnAnnouncement(announcement);
-//}
-
-/**
  * Interest packet timeout handler.
  * Update retransmission and rtt statistics.
  * Update the pending interest data structures.

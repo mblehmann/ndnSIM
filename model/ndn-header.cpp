@@ -55,19 +55,6 @@ PacketHeader<Data>::GetTypeId()
   return tid;
 }
 
-//template<>
-//ns3::TypeId
-//PacketHeader<Announcement>::GetTypeId()
-//{
-//  static ns3::TypeId tid =
-//    ns3::TypeId("ns3::ndn::Announcement")
-//    .SetGroupName("Ndn")
-//    .SetParent<Header>()
-//    .AddConstructor<PacketHeader<Announcement>>()
-//    ;
-//  return tid;
-//}
-
 template<class Pkt>
 TypeId
 PacketHeader<Pkt>::GetInstanceTypeId(void) const
@@ -151,13 +138,6 @@ PacketHeader<Data>::Print(std::ostream& os) const
   os << "D: " << *m_packet;
 }
 
-//template<>
-//void
-//PacketHeader<Announcement>::Print(std::ostream& os) const
-//{
-//  os << "A: " << *m_packet;
-//}
-
 template<class Pkt>
 shared_ptr<const Pkt>
 PacketHeader<Pkt>::getPacket()
@@ -167,15 +147,12 @@ PacketHeader<Pkt>::getPacket()
 
 typedef PacketHeader<Interest> InterestHeader;
 typedef PacketHeader<Data> DataHeader;
-//typedef PacketHeader<Announcement> AnnouncementHeader;
 
 NS_OBJECT_ENSURE_REGISTERED(InterestHeader);
 NS_OBJECT_ENSURE_REGISTERED(DataHeader);
-//NS_OBJECT_ENSURE_REGISTERED(AnnouncementHeader);
 
 template class PacketHeader<Interest>;
 template class PacketHeader<Data>;
-//template class PacketHeader<Announcement>;
 
 } // namespace ndn
 } // namespace ns3

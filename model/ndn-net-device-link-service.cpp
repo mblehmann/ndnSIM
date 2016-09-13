@@ -74,13 +74,6 @@ NetDeviceLinkService::doSendInterest(const Interest& interest)
 {
   NS_LOG_FUNCTION(this << &interest);
 
-<<<<<<< HEAD:model/ndn-net-device-face.cpp
-  NS_LOG_INFO("Sending interest " << interest.getName());
-
-  this->emitSignal(onSendInterest, interest);
-
-=======
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f:model/ndn-net-device-link-service.cpp
   Ptr<Packet> packet = Convert::ToPacket(interest);
   send(packet);
 }
@@ -94,18 +87,6 @@ NetDeviceLinkService::doSendData(const Data& data)
   send(packet);
 }
 
-<<<<<<< HEAD:model/ndn-net-device-face.cpp
-//void
-//NetDeviceFace::sendAnnouncement(const Announcement& announcement)
-//{
-//  NS_LOG_FUNCTION(this << &announcement);
-//
-//  this->emitSignal(onSendAnnouncement, announcement);
-//
-//  Ptr<Packet> packet = Convert::ToPacket(announcement);
-//  send(packet);
-//}
-=======
 void
 NetDeviceLinkService::doSendNack(const lp::Nack& nack)
 {
@@ -115,7 +96,6 @@ NetDeviceLinkService::doSendNack(const lp::Nack& nack)
   // Ptr<Packet> packet = Convert::ToPacket(nack);
   // send(packet);
 }
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f:model/ndn-net-device-link-service.cpp
 
 // callback
 void
@@ -127,23 +107,6 @@ NetDeviceLinkService::receiveFromNetDevice(Ptr<NetDevice> device, Ptr<const Pack
 
   Ptr<Packet> packet = p->Copy();
   try {
-<<<<<<< HEAD:model/ndn-net-device-face.cpp
-    uint32_t type = Convert::getPacketType(p);
-    if (type == ::ndn::tlv::Interest) {
-      shared_ptr<const Interest> i = Convert::FromPacket<Interest>(packet);
-      this->emitSignal(onReceiveInterest, *i);
-    }
-//    else if (type == ::ndn::tlv::Announcement) {
-//      shared_ptr<const Announcement> a = Convert::FromPacket<Announcement>(packet);
-//      this->emitSignal(onReceiveAnnouncement, *a);
-//    }
-    else if (type == ::ndn::tlv::Data) {
-      shared_ptr<const Data> d = Convert::FromPacket<Data>(packet);
-      this->emitSignal(onReceiveData, *d);
-    }
-    else {
-      NS_LOG_ERROR("Unsupported TLV packet");
-=======
     switch (Convert::getPacketType(p)) {
       case ::ndn::tlv::Interest: {
         shared_ptr<const Interest> i = Convert::FromPacket<Interest>(packet);
@@ -161,7 +124,6 @@ NetDeviceLinkService::receiveFromNetDevice(Ptr<NetDevice> device, Ptr<const Pack
       // }
       default:
         NS_LOG_ERROR("Unsupported TLV packet");
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f:model/ndn-net-device-link-service.cpp
     }
   }
   catch (const ::ndn::tlv::Error& e) {

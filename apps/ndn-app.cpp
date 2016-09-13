@@ -116,14 +116,6 @@ App::OnData(shared_ptr<const Data> data)
   m_receivedDatas(data, this, m_face);
 }
 
-<<<<<<< HEAD
-//void
-//App::OnAnnouncement(shared_ptr<const Announcement> announcement)
-//{
-//  NS_LOG_FUNCTION(this << announcement);
-//  m_receivedAnnouncements(announcement, this, m_face);
-//}
-=======
 void
 App::OnNack(shared_ptr<const lp::Nack> nack)
 {
@@ -132,7 +124,6 @@ App::OnNack(shared_ptr<const lp::Nack> nack)
   // @TODO Implement
   // m_receivedDatas(data, this, m_face);
 }
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f
 
 // Application Methods
 void

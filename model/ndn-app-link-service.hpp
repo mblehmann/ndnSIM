@@ -49,26 +49,13 @@ public:
 
   virtual ~AppLinkService();
 
-<<<<<<< HEAD:model/ndn-app-face.hpp
-//  virtual void
-//  sendAnnouncement(const Announcement& announcement);
-
-  /**
-   * @brief Send Interest towards NFD
-   */
-=======
 public:
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f:model/ndn-app-link-service.hpp
   void
   onReceiveInterest(const Interest& interest);
 
   void
   onReceiveData(const Data& data);
 
-<<<<<<< HEAD:model/ndn-app-face.hpp
-//  void
-//  onReceiveAnnouncement(const Announcement& announcement);
-=======
   void
   onReceiveNack(const lp::Nack& nack);
 
@@ -81,7 +68,6 @@ private:
 
   virtual void
   doSendNack(const lp::Nack& nack) override;
->>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f:model/ndn-app-link-service.hpp
 
   virtual void
   doReceivePacket(nfd::face::Transport::Packet&& packet) override
