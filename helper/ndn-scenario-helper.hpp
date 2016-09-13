@@ -108,7 +108,8 @@ public:
    *       });
    */
   void
-  createTopology(std::initializer_list<std::initializer_list<std::string>/*node clique*/> topology);
+  createTopology(std::initializer_list<std::initializer_list<std::string>/*node clique*/> topology,
+                 bool shouldInstallNdnStack = true);
 
   /**
    * @brief Create routes between topology nodes
@@ -158,16 +159,24 @@ public: // topology accessors
   getFace(const std::string& node1, const std::string& node2);
 
   /**
+   * @brief Get NetDevice on the @p node1 pointing towards @p node2
+   * @throw std::invalid_argument if the link does not exist
+   */
+  Ptr<NetDevice>
+  getNetDevice(const std::string& node1, const std::string& node2);
+
+  /**
    * \brief Disable RIB Manager
    */
   void
   disableRibManager();
 
-  /**
-   * \brief Disable Face Manager
-   */
-  void
-  disableFaceManager();
+  // Cannot be disabled for now
+  // /**
+  //  * \brief Disable Face Manager
+  //  */
+  // void
+  // disableFaceManager();
 
   /**
    * \brief Disable Strategy Choice Manager
@@ -176,10 +185,16 @@ public: // topology accessors
   disableStrategyChoiceManager();
 
   /**
-   * \brief Disable Status Server
+   * \brief Disable Forwarder Status Manager
    */
   void
-  disableStatusServer();
+  disableForwarderStatusManager();
+
+  /**
+   * \brief Get NDN stack helper, e.g., to adjust its parameters
+   */
+  StackHelper&
+  getStackHelper();
 
 private:
   Ptr<Node>

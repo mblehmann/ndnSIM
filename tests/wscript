@@ -16,4 +16,3 @@ def build(bld):
         obj = bld.create_ns3_program(name, all_modules)
         obj.source = [i] + bld.path.ant_glob(['%s/**/*.cpp' % name])
         obj.install_path = None
-

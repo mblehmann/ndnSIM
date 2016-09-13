@@ -21,7 +21,8 @@
 #define NDN_APP_H
 
 #include "ns3/ndnSIM/model/ndn-common.hpp"
-#include "ns3/ndnSIM/model/ndn-app-face.hpp"
+#include "ns3/ndnSIM/model/ndn-app-link-service.hpp"
+#include "ns3/ndnSIM/NFD/daemon/face/face.hpp"
 
 #include "ns3/application.h"
 #include "ns3/ptr.h"
@@ -63,29 +64,31 @@ public:
 
   /**
    * @brief Method that will be called every time new Interest arrives
-   * @param interest Interest header
-   * @param packet   "Payload" of the interests packet. The actual payload should be zero, but
-   * packet itself
-   *                 may be useful to get packet tags
    */
   virtual void
   OnInterest(shared_ptr<const Interest> interest);
 
   /**
    * @brief Method that will be called every time new Data arrives
-   * @param contentObject Data header
-   * @param payload payload (potentially virtual) of the Data packet (may include packet tags of
-   * original packet)
    */
   virtual void
   OnData(shared_ptr<const Data> data);
 
+<<<<<<< HEAD
 //  virtual void
 //  OnAnnouncement(shared_ptr<const Announcement> announcement);
+=======
+   /**
+   * @brief Method that will be called every time new Nack arrives
+   */
+  virtual void
+  OnNack(shared_ptr<const lp::Nack> nack);
+>>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f
 
 public:
   typedef void (*InterestTraceCallback)(shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>);
   typedef void (*DataTraceCallback)(shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>);
+  // @TODO add NACK
 
 //  typedef void (*AnnouncementTraceCallback)(shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>);
 
@@ -105,7 +108,9 @@ protected:
 
 protected:
   bool m_active; ///< @brief Flag to indicate that application is active (set by StartApplication and StopApplication)
-  shared_ptr<AppFace> m_face; ///< @brief automatically created application face through which application communicates
+  shared_ptr<Face> m_face;
+  AppLinkService* m_appLink;
+
   uint32_t m_appId;
 
   TracedCallback<shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>>
@@ -114,8 +119,12 @@ protected:
   TracedCallback<shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>>
     m_receivedDatas; ///< @brief App-level trace of received Data
 
+<<<<<<< HEAD
 //  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
 //    m_receivedAnnouncements; ///< @brief App-level trace of received Data
+=======
+  // @TODO add NACK
+>>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f
 
   TracedCallback<shared_ptr<const Interest>, Ptr<App>, shared_ptr<Face>>
     m_transmittedInterests; ///< @brief App-level trace of transmitted Interests
@@ -123,9 +132,13 @@ protected:
   TracedCallback<shared_ptr<const Data>, Ptr<App>, shared_ptr<Face>>
     m_transmittedDatas; ///< @brief App-level trace of transmitted Data
 
+<<<<<<< HEAD
 //  TracedCallback<shared_ptr<const Announcement>, Ptr<App>, shared_ptr<Face>>
 //    m_transmittedAnnouncements; ///< @brief App-level trace of transmitted Announcement
 
+=======
+  // @TODO add NACK
+>>>>>>> a9d889b7a787842d45c86c67bc21d44853b03b7f
 };
 
 } // namespace ndn

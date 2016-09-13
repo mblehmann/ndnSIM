@@ -21,7 +21,6 @@
 #define NDN_L3_PROTOCOL_H
 
 #include "ns3/ndnSIM/model/ndn-common.hpp"
-#include "ns3/ndnSIM/model/ndn-face.hpp"
 
 #include <list>
 #include <vector>
@@ -147,6 +146,12 @@ public:
    */
   nfd::ConfigSection&
   getConfig();
+
+  /**
+   * \brief Inject interest through internal Face
+   */
+  void
+  injectInterest(const Interest& interest);
 
 public: // Workaround for python bindings
   static Ptr<L3Protocol>

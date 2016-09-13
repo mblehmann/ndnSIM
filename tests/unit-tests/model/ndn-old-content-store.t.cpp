@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2011-2015  Regents of the University of California.
+ * Copyright (c) 2011-2016  Regents of the University of California.
  *
  * This file is part of ndnSIM. See AUTHORS for complete list of ndnSIM authors and
  * contributors.
@@ -18,29 +18,24 @@
  **/
 
 
-#include "model/ndn-net-device-link-service.hpp"
-
 #include "../tests-common.hpp"
 
 namespace ns3 {
 namespace ndn {
 
-BOOST_FIXTURE_TEST_SUITE(ModelNdnNetDeviceFace, ScenarioHelperWithCleanupFixture)
+BOOST_FIXTURE_TEST_SUITE(ModelNdnOldContentStore, ScenarioHelperWithCleanupFixture)
 
-BOOST_AUTO_TEST_CASE(Basic)
+BOOST_AUTO_TEST_CASE(RandomPolicy)
 {
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("10Mbps"));
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
 
+  getStackHelper().SetOldContentStore("ns3::ndn::cs::Random", "MaxSize", "10");
+
   createTopology({
       {"1", "2"},
-    }, false);
-
-  getNetDevice("1", "2")->SetAttribute("Address", StringValue("00:00:00:ff:ff:01"));
-  getNetDevice("2", "1")->SetAttribute("Address", StringValue("00:00:00:ff:ff:02"));
-
-  getStackHelper().InstallAll();
+    });
 
   addRoutes({
       {"1", "2", "/prefix", 1},
@@ -58,19 +53,18 @@ BOOST_AUTO_TEST_CASE(Basic)
   Simulator::Stop(Seconds(20.001));
   Simulator::Run();
 
-  BOOST_CHECK_EQUAL(getFace("1", "2")->getCounters().nOutInterests, 100);
-  BOOST_CHECK_EQUAL(getFace("1", "2")->getCounters().nInData, 100);
+  std::map<std::string, std::vector<Name>> entries;
+  for (const std::string& node : {"1", "2"}) {
+    auto cs = getNode(node)->GetObject<ContentStore>();
+    auto& nodeCs = entries[node];
+    for (auto it = cs->Begin(); it != cs->End(); it = cs->Next(it)) {
+      nodeCs.push_back(it->GetName());
+    }
+  }
 
-  BOOST_CHECK_EQUAL(getFace("2", "1")->getCounters().nInInterests, 100);
-  BOOST_CHECK_EQUAL(getFace("2", "1")->getCounters().nOutData, 100);
-
-  BOOST_CHECK_EQUAL(boost::lexical_cast<std::string>(*getFace("1", "2")), "netdev://[00:00:00:ff:ff:01]");
-  BOOST_CHECK_EQUAL(boost::lexical_cast<std::string>(*getFace("2", "1")), "netdev://[00:00:00:ff:ff:02]");
-
-  BOOST_CHECK_EQUAL(boost::lexical_cast<std::string>(getFace("1", "2")->getLocalUri()),  "netdev://[00:00:00:ff:ff:01]");
-  BOOST_CHECK_EQUAL(boost::lexical_cast<std::string>(getFace("1", "2")->getRemoteUri()), "netdev://[00:00:00:ff:ff:02]");
-  BOOST_CHECK_EQUAL(boost::lexical_cast<std::string>(getFace("2", "1")->getLocalUri()),  "netdev://[00:00:00:ff:ff:02]");
-  BOOST_CHECK_EQUAL(boost::lexical_cast<std::string>(getFace("2", "1")->getRemoteUri()), "netdev://[00:00:00:ff:ff:01]");
+  BOOST_CHECK_EQUAL(entries["1"].size(), 10);
+  BOOST_CHECK_EQUAL(entries["2"].size(), 10);
+  BOOST_CHECK(entries["1"] != entries["2"]); // this test has a small chance of failing
 }
 
 BOOST_AUTO_TEST_SUITE_END()
