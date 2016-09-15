@@ -149,7 +149,10 @@ public:
   AnnounceContent();
 
   virtual void
-  AnnounceContent(Name object);
+  AnnounceContent(Name object, bool update);
+
+  virtual void
+  UnannounceContent(Name object);
 
   // Producer
 //  virtual void
@@ -293,6 +296,7 @@ private:
 
   // Mobility
   bool m_moving;
+  Vector m_position;
 
 };
 

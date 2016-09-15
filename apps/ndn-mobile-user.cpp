@@ -41,6 +41,7 @@
 #include "utils/ndn-rtt-mean-deviation.hpp"
 
 #include "helper/ndn-fib-helper.hpp"
+#include "helper/ndn-global-routing-helper.hpp"
 
 #include "helper/ndn-link-control-helper.hpp"
 
@@ -179,12 +180,12 @@ MobileUser::MobileUser()
 void
 MobileUser::StartApplication() 
 {
-  NS_LOG_DEBUG("oi");
   App::StartApplication();
+  if (m_prefix == "/prod0")
   FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
   FibHelper::AddRoute(GetNode(), "/hint", m_face, 0);
   FibHelper::AddRoute(GetNode(), "/vicinity", m_face, 0);
-
+  
   Ptr<MobilityModel> mob = this->GetNode()->GetObject<MobilityModel>();
   mob->TraceConnectWithoutContext("CourseChange", MakeCallback(&MobileUser::CourseChange, this));
 
@@ -195,7 +196,13 @@ MobileUser::StartApplication()
 
   m_windowSize = m_initialWindowSize;
 
-  Vector pos = mob->GetPosition();
+  m_position = mob->GetPosition();
+  vector<Ptr<Node>> routers = m_catalog->getRouters();
+  ndn::LinkControlHelper::UpLink(this->GetNode(), routers[m_position.x]);
+
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
+
   m_popularity = m_catalog->getUserPopularity();
 
   // Set probing model - NOT FINAL SOLUTION
@@ -212,13 +219,14 @@ MobileUser::StartApplication()
   m_availabilityThreshold = 3; 
   m_interestedThreshold = true;
  
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " initial position at router " << pos.x << " with popularity " << m_popularity << " and availability " << m_userAvailability );
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " initial position at router " << m_position.x << " with popularity " << m_popularity << " and availability " << m_userAvailability );
 
   if (!m_publishTime.IsZero())
     Simulator::Schedule(m_publishTime, &MobileUser::PublishContent, this);
 
   Simulator::Schedule(m_catalog->getMaxSimulationTime() - Seconds(0.1), &MobileUser::EndGame, this);
 }
+
 
 /**
  * Operations executed at the end of the application.
@@ -306,7 +314,8 @@ MobileUser::CheckRetxTimeout()
 {
   Time now = Simulator::Now();
   Time rto = m_rtt->RetransmitTimeout();
-  
+//  NS_LOG_INFO ("Current RTO: " << rto.ToDouble (Time::S) << "s");
+
   Name entryName;
   Time entryTime;
 
@@ -324,6 +333,8 @@ MobileUser::CheckRetxTimeout()
         entryTime = it->second;
       }   
     }
+
+//    NS_LOG_INFO("ENTRY: " << entryTime + rto << " " << now);
 
     if (entryTime + rto <= now)
     {
@@ -393,6 +404,7 @@ MobileUser::RespondHint(shared_ptr<const Interest> interest)
         if (m_providedObjects.size() == m_cacheSize) {
           uint32_t pos = (uint32_t) m_rand->GetValue(0, m_cacheSize);
           Name removedObject = m_providedObjects[pos];
+	  UnannounceContent(removedObject);
           FibHelper::RemoveRoute(GetNode(), removedObject, m_face);
           m_providedObjects.erase(m_providedObjects.begin() + pos);
         }
@@ -412,6 +424,7 @@ MobileUser::RespondHint(shared_ptr<const Interest> interest)
     if (m_providedObjects.size() == m_cacheSize) {
       uint32_t pos = (uint32_t) m_rand->GetValue(0, m_cacheSize);
       Name removedObject = m_providedObjects[pos];
+      UnannounceContent(removedObject);
       FibHelper::RemoveRoute(GetNode(), removedObject, m_face);
       m_providedObjects.erase(m_providedObjects.begin() + pos);
     }
@@ -789,6 +802,8 @@ MobileUser::SendInterestPacket(bool timeout)
   m_pendingObjects.push_back(interest->getName());
   m_pendingInterests++;
 
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " sent an INTEREST for object " << object);
+
   ScheduleNextInterestPacket(timeout);
 }
 
@@ -888,7 +903,7 @@ MobileUser::ConcludeObjectDownload(Name objectName)
 
   for (uint32_t i = 0; i < m_providedObjects.size(); i++) {
     if (objectName == m_providedObjects[i]) {
-      AnnounceContent(objectName);
+      AnnounceContent(objectName, true);
       FibHelper::AddRoute(GetNode(), objectName, m_face, 0);
       break;
     }
@@ -908,30 +923,46 @@ MobileUser::ConcludeObjectDownload(Name objectName)
 void
 MobileUser::AnnounceContent()
 {
-  for (uint32_t i = 0; i < m_generatedContent.size(); i++) {
-    AnnounceContent(m_generatedContent[i]);
-  }
+//  for (uint32_t i = 0; i < m_generatedContent.size(); i++) {
+//    AnnounceContent(m_generatedContent[i], false);
+//  }
   for (uint32_t i = 0; i < m_providedObjects.size(); i++) {
-    AnnounceContent(m_providedObjects[i]);
-  }   
+    AnnounceContent(m_providedObjects[i], false);
+  }
+//  if (m_providedObjects.size() > 0) {
+//    ndn::GlobalRoutingHelper::CalculateRoutes();
+//    ndn::GlobalRoutingHelper::PrintFIBs();
+//  }
 }
 
 /**
+
  * Announce a specific content object.
  * Creates an announcement packet and sends it.
  */
 void
-MobileUser::AnnounceContent(Name object)
+MobileUser::AnnounceContent(Name object, bool update)
 {
-  // Create the announcement packet
-//  shared_ptr<Announcement> announcement = make_shared<Announcement>(object);
-//  announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " announced object " << object << " at " << m_position.x);
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+//  ndnGlobalRoutingHelper.InstallAll();  
+  ndnGlobalRoutingHelper.AddOrigin(object.toUri(), this->GetNode());
+  
+  if (update) {
+    ndn::GlobalRoutingHelper::CalculateRoutes();
+    ndn::GlobalRoutingHelper::PrintFIBs();
+  }
+}
 
-  // Send the packet
-//  announcement->wireEncode();
+void
+MobileUser::UnannounceContent(Name object)
+{
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+//  ndnGlobalRoutingHelper.InstallAll();  
+  ndnGlobalRoutingHelper.RemoveOrigin(object.toUri(), GetNode());
 
-//  m_transmittedAnnouncements(announcement, this, m_face);
-//  m_face->onReceiveAnnouncement(*announcement);
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
 }
 
 // PRODUCER ACTIONS
@@ -977,7 +1008,7 @@ MobileUser::PublishContent()
 
   AdvertiseContent(newObject);
 
-  AnnounceContent(newObject);
+  //AnnounceContent(newObject, false);
 
   if (m_vicinitySize > 0 && !m_hintProbing)
   {
@@ -1136,7 +1167,7 @@ MobileUser::PushContent(Name objectName)
 }
 
 /**
- * @brieg Basic compare function to compare two elements during qsort algorithm
+ * @brief Basic compare function to compare two elements during qsort algorithm
  */
 
 static int compare (const void* p1, const void* p2)
@@ -1145,7 +1176,7 @@ static int compare (const void* p1, const void* p2)
 }
 
 /**
- * Sort the vicinity based device availability. 
+ * Sort the vicinity based on device availability. 
  */
 void
 MobileUser::SortVicinity()
@@ -1219,10 +1250,10 @@ MobileUser::Move(Ptr<const MobilityModel> model)
   Ptr<Node> currentRouter;
   Ptr<MobilityModel> mob;
 
-  for (uint32_t i = 0; i < routers.size(); i++) {
-    Ptr<Node> currentRouter = routers[i];
-    ndn::LinkControlHelper::FailLink(this->GetNode(), currentRouter);
-  }
+//  for (uint32_t i = 0; i < routers.size(); i++) {
+//    Ptr<Node> currentRouter = routers[i];
+  ndn::LinkControlHelper::FailLink(this->GetNode(), routers[m_position.x]);
+//  }
 
   NS_LOG_DEBUG("Node " << GetNode()->GetId() << " started movement");
 }
@@ -1235,12 +1266,14 @@ MobileUser::Session(Ptr<const MobilityModel> model)
 {
   m_moving = false;
  
-  Vector pos = model->GetPosition();
+  m_position = model->GetPosition();
 
   vector<Ptr<Node>> routers = m_catalog->getRouters();
   Ptr<Node> currentRouter;
   Ptr<MobilityModel> mob;
-
+      
+  ndn::LinkControlHelper::UpLink(this->GetNode(), routers[m_position.x]);
+/*
   for (uint32_t i = 0; i < routers.size(); i++) {
     Ptr<Node> currentRouter = routers[i];
 
@@ -1248,10 +1281,11 @@ MobileUser::Session(Ptr<const MobilityModel> model)
       ndn::LinkControlHelper::UpLink(this->GetNode(), currentRouter);
     }
   }
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " started session at router " << pos.x);
+*/
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " started session at router " << m_position.x);
 
-  AnnounceContent(); //AnnounceContent is commented out. This call does nothing.
-
+  AnnounceContent(); 
+  
   if (m_movingInterest)
   {
     Simulator::ScheduleNow(&MobileUser::ScheduleNextInterestPacket, this, false);
@@ -1289,6 +1323,8 @@ MobileUser::CourseChange(Ptr<const MobilityModel> model)
     m_movingPush = false;
   }
 
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
 }
 
 

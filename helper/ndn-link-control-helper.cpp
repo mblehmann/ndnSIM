@@ -96,6 +96,7 @@ void
 LinkControlHelper::FailLink(Ptr<Node> node1, Ptr<Node> node2)
 {
   setErrorRate(node1, node2, 1.0);
+  setErrorRate(node2, node1, 1.0);
 }
 
 void
@@ -108,6 +109,7 @@ void
 LinkControlHelper::UpLink(Ptr<Node> node1, Ptr<Node> node2)
 {
   setErrorRate(node1, node2, -0.1); // this will ensure error model is disabled
+  setErrorRate(node2, node1, -0.1); // this will ensure error model is disabled
 }
 
 void
