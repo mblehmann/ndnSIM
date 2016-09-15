@@ -21,8 +21,6 @@
 
 #include <algorithm>
 
-using namespace std;
-
 namespace ns3 {
 namespace ndn {
 

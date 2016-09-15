@@ -94,7 +94,7 @@ NetDeviceFace::sendInterest(const Interest& interest)
 {
   NS_LOG_FUNCTION(this << &interest);
 
-  NS_LOG_INFO("Sending interest " << &interest);
+  NS_LOG_INFO("Sending interest " << interest.getName());
 
   this->emitSignal(onSendInterest, interest);
 

@@ -20,7 +20,7 @@
 #ifndef NDN_PROFILE_CONTAINER_H
 #define NDN_PROFILE_CONTAINER_H
 
-#include "ns3/ndnSIM/model/ndn-common.hpp"
+//#include "ns3/ndnSIM/model/ndn-common.hpp"
 
 #include <stdint.h>
 #include <vector>
@@ -28,8 +28,6 @@
 #include "ns3/ptr.h"
 #include "ns3/simple-ref-count.h"
 #include "ndn-mobility-profile.hpp"
-
-using namespace std;
 
 namespace ns3 {
 namespace ndn {

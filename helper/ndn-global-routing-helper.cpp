@@ -129,6 +129,11 @@ GlobalRoutingHelper::Install(Ptr<Node> node)
       gr->AddIncidency(face, grChannel);
     }
   }
+
+  for (auto& i : gr->GetIncidencies()) {
+    NS_LOG_DEBUG("INCIDENCY " << get<0>(i) << ", " << get<1>(i) << ", " << get<2>(i));
+  }
+
 }
 
 void
@@ -413,14 +418,14 @@ GlobalRoutingHelper::PrintFIBs()
    NS_LOG_DEBUG("NODE " << (*node)->GetId());
    for (const auto& entry : (*node)->GetObject<L3Protocol>()->getForwarder()->getFib()) {
     if (entry.getPrefix().toUri() != "/" && entry.getPrefix().toUri() != "/hint" && entry.getPrefix().toUri() != "/vicinity") {
-    NS_LOG_DEBUG(entry.getPrefix().toUri());
+    NS_LOG_DEBUG(entry.getPrefix() << " (");
     for (auto& nextHop : entry.getNextHops()) {
      auto face = dynamic_pointer_cast<ndn::Face>(nextHop.getFace());
      NS_LOG_DEBUG(face->getId() << " (cost=" << nextHop.getCost() << "), ");
     }
     }
    }
-  }
+   }
 }
 
 } // namespace ndn

@@ -29,6 +29,8 @@
 #include "ns3/mobility-module.h"
 
 #include <ns3/ndnSIM/utils/ndn-catalog.hpp>
+#include <ns3/ndnSIM/utils/ndn-mobility-profile.hpp>
+#include <ns3/ndnSIM/utils/ndn-profile-container.hpp>
 
 #include "ns3/ndnSIM/utils/ndn-mobility-profile.hpp"
 #include "ns3/ndnSIM/helper/ndn-profile-container.hpp"
@@ -151,7 +153,6 @@ main(int argc, char* argv[])
       infile >> max_publish_time;
     else if(parameter == "max_packets")
       infile >> max_packets;
-    // pesos de localizacao(distribuicao) no arquivo de entrada
     else if(parameter == "profiles_file")
       infile >> profiles;
   }
@@ -272,15 +273,6 @@ main(int argc, char* argv[])
     cout << endl;
   }
 
-/* ML removed it
-    cout << "Initialize positions of nodes" << endl;
-    for (uint32_t j = 0; j < n_users; j++)
-    {
-      p2p.Install(routerNodes.Get(i), userNodes.Get(j));
-    }
-  }
-*/
-
   cout << "Install NDN stack on all nodes" << endl;
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
@@ -298,7 +290,6 @@ main(int argc, char* argv[])
   }
   ndn::StrategyChoiceHelper::InstallAll("/hint", "/localhost/nfd/strategy/multicast");
   ndn::StrategyChoiceHelper::InstallAll("/vicinity", "/localhost/nfd/strategy/multicast");
-
 
   cout << "Installing applications" << endl;
   // Installing applications
@@ -327,7 +318,6 @@ main(int argc, char* argv[])
   uint32_t producers = 0;
   for (uint32_t i = 0; i < n_users; i++) {
     Time publishTime = Minutes(initialization->GetValue(min_publish_time.GetMinutes(), max_publish_time.GetMinutes()));
-//    uint32_t pos = (uint32_t) initialization->GetValue(0, n_routers);
 
     ndn::AppHelper consumerHelper("ns3::ndn::MobileUser");
     consumerHelper.SetPrefix("/prod" + to_string(i));
@@ -344,8 +334,6 @@ main(int argc, char* argv[])
     consumerHelper.SetAttribute("CacheSize", UintegerValue(cache_size));
     consumerHelper.SetAttribute("Catalog", PointerValue(catalog));
     consumerHelper.Install(userNodes.Get(i));
-
-
   }
 
   for (uint32_t i = 0; i < n_users; i++) {

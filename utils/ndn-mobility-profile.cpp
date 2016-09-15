@@ -19,9 +19,9 @@
 
 #include "ndn-mobility-profile.hpp"
 
-NS_LOG_COMPONENT_DEFINE("ndn.MobilityProfile");
+#include <algorithm>
 
-using namespace std;
+NS_LOG_COMPONENT_DEFINE("ndn.MobilityProfile");
 
 namespace ns3 {
 namespace ndn {
@@ -76,12 +76,12 @@ MobilityProfile::SetSessionShape(double shape) {
 
 void
 MobilityProfile::SetSessionBound(double bound) {
-  session_bound = bound;;
+  session_bound = bound;
 }
 
 void
 MobilityProfile::SetSessionConstant(Time ses_const) {
-  session_constant = ses_const;;
+  session_constant = ses_const;
 }
 
 /* MobilityProfileContainer */
