@@ -24,6 +24,8 @@
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 
+#include "utils/ndn-ns3-packet-tag.hpp"
+
 #include "model/ndn-app-face.hpp"
 #include "model/ndn-ns3.hpp"
 #include "model/ndn-l3-protocol.hpp"
@@ -45,7 +47,11 @@ ProbeAgent::GetTypeId(void)
     TypeId("ns3::ndn::ProbeAgent")
       .SetGroupName("Ndn")
       .SetParent<App>()
-      .AddConstructor<ProbeAgent>();
+      .AddConstructor<ProbeAgent>()
+
+      .AddAttribute("Prefix", "Prefix, for which producer has the data",
+                    StringValue("/ha0"), MakeNameAccessor(&ProbeAgent::m_prefix),
+                    MakeNameChecker());
 
   return tid;
 }
@@ -62,7 +68,7 @@ ProbeAgent::StartApplication()
   NS_LOG_FUNCTION_NOARGS();
   App::StartApplication();
 
-  Register("/global", "/local");
+  FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
 }
 
 void
@@ -73,111 +79,118 @@ ProbeAgent::StopApplication()
   App::StopApplication();
 }
 
+/**
+ * Receives an interest.
+ * If it is an update request, update the locator for the prefix (/update/prefix/locator)
+ * If it is a register request, register the locator for the prefix (/register/prefix/locator)
+ * If it is an unregister request, unregister the locator for the prefix (/unregister/prefix)
+ * If it is an object request, pre-append the locator and forward it
+ */
 void
 ProbeAgent::OnInterest(shared_ptr<const Interest> interest)
 {
   App::OnInterest(interest); // tracing inside
 
-  NS_LOG_FUNCTION(this << interest);
+  NS_LOG_FUNCTION_NOARGS();
+  NS_LOG_DEBUG("Node" << GetNode()->GetId() << " receiving interest " << interest->getName().toUri());
 
   if (!m_active)
     return;
 
-  Name globalName(interest->getName().getSubName(0, 1));
-  uint32_t seq = interest->getName().at(-1).toSequenceNumber();
+  if (interest->getName().at(1).toUri() == "update") {
+    Update("/" + interest->getName().at(2).toUri(), "/" + interest->getName().at(3).toUri());
+  } else if (interest->getName().at(1).toUri() == "register") {
+    Register("/" + interest->getName().at(2).toUri(), "/" + interest->getName().at(3).toUri());
+  } else if (interest->getName().at(1).toUri() == "unregister") {
+    Unregister("/" + interest->getName().at(2).toUri());
+  } else {
+    string prefix = "/" + interest->getName().at(0).toUri();
+    shared_ptr<Name> forwardName = make_shared<Name>(m_prefixes[prefix]);
+    forwardName->append(interest->getName());
 
-  NS_LOG_DEBUG(" << received request for " << interest->getName());
-  shared_ptr<Name> localName = make_shared<Name>(m_globals[globalName]);
-  localName->appendSequenceNumber(seq);
-  NS_LOG_DEBUG(" >> forwarding request for " << *localName);
+    shared_ptr<Interest> forwardInterest = make_shared<Interest>();
+    forwardInterest->setNonce(interest->getNonce());
+    forwardInterest->setName(*forwardName);
 
-  shared_ptr<Interest> localInterest = make_shared<Interest>();
-  localInterest->setNonce(interest->getNonce());
-  localInterest->setName(*localName);
-
-  m_transmittedInterests(localInterest, this, m_face);
-  m_face->onReceiveInterest(*localInterest);
+    m_transmittedInterests(forwardInterest, this, m_face);
+    m_face->onReceiveInterest(*forwardInterest);
+    NS_LOG_DEBUG("Node" << GetNode()->GetId() << " forwarding interest " << forwardName->toUri());
+  }
 }
 
 void
 ProbeAgent::OnData(shared_ptr<const Data> data)
 {
-  // dataName.append(m_postfix);
-  // dataName.appendVersion();
   if (!m_active)
     return;
 
   App::OnData(data); // tracing inside
 
-  NS_LOG_FUNCTION(this << data);
+  NS_LOG_FUNCTION_NOARGS();
+  NS_LOG_DEBUG("Node" << GetNode()->GetId() << " receiving data " << data->getName().toUri());
 
-  Name localName(data->getName().getSubName(0, 1));
-  uint32_t seq = data->getName().at(-1).toSequenceNumber();
-  Name globalName = m_locals[localName];
-  NS_LOG_DEBUG(" << received data for " << data->getName());
-
-  Name dataName(globalName);
-  dataName.appendSequenceNumber(seq);
-  // dataName.append(m_postfix);
-  // dataName.appendVersion();
-  NS_LOG_DEBUG(" >> forwarding data for " << dataName);
-
-  auto localData = make_shared<Data>();
-  localData->setName(dataName);
-  localData->setFreshnessPeriod(data->getFreshnessPeriod());
-
-  localData->setContent(data->getContent());
-  localData->setSignature(data->getSignature());
-
-  // to create real wire encoding
-  localData->wireEncode();
-
-  m_transmittedDatas(localData, this, m_face);
-  m_face->onReceiveData(*localData);
-}
-/*
-  auto data = make_shared<Data>();
-  data->setName(dataName);
-  data->setFreshnessPeriod(::ndn::time::milliseconds(m_freshness.GetMilliSeconds()));
-
-  data->setContent(make_shared< ::ndn::Buffer>(m_virtualPayloadSize));
-
-  Signature signature;
-  SignatureInfo signatureInfo(static_cast< ::ndn::tlv::SignatureTypeValue>(255));
-
-  if (m_keyLocator.size() > 0) {
-    signatureInfo.setKeyLocator(m_keyLocator);
+  int hopCount = 0;
+  auto ns3PacketTag = data->getTag<Ns3PacketTag>();
+  if (ns3PacketTag != nullptr) { // e.g., packet came from local node's cache
+    FwHopCountTag hopCountTag;
+    if (ns3PacketTag->getPacket()->PeekPacketTag(hopCountTag)) {
+      hopCount = hopCountTag.Get();
+      NS_LOG_DEBUG("Hop count: " << hopCount);
+    }
   }
 
-  signature.setInfo(signatureInfo);
-  signature.setValue(::ndn::nonNegativeIntegerBlock(::ndn::tlv::SignatureValue, m_signature));
+  string prefix = data->getName().at(0).toUri();
 
-  data->setSignature(signature);
+  Name objectName(data->getName().getSubName(1));
+  objectName.append(to_string(hopCount));
+  NS_LOG_DEBUG(objectName.toUri());
+  
+  auto forwardData = make_shared<Data>();
+  forwardData->setName(objectName);
+  forwardData->setFreshnessPeriod(data->getFreshnessPeriod());
 
-  NS_LOG_INFO("node(" << GetNode()->GetId() << ") responding with Data: " << data->getName());
+  forwardData->setContent(data->getContent());
+  forwardData->setSignature(data->getSignature());
 
   // to create real wire encoding
-  data->wireEncode();
+  forwardData->wireEncode();
 
-  m_transmittedDatas(data, this, m_face);
-  m_face->onReceiveData(*data);
-}
-*/
-
-void
-ProbeAgent::Register(Name global, Name local)
-{
-  m_globals[global] = local;
-  m_locals[local] = global;
-  FibHelper::AddRoute(GetNode(), global, m_face, 0);
+  m_transmittedDatas(forwardData, this, m_face);
+  m_face->onReceiveData(*forwardData);
+  NS_LOG_DEBUG("Node" << GetNode()->GetId() << " forwarding interest " << objectName.toUri());
 }
 
 void
-ProbeAgent::Unregister(Name global)
+ProbeAgent::Register(string prefix, string locator)
 {
-  m_locals.erase(m_globals[global]);
-  m_globals.erase(global);
-  FibHelper::RemoveRoute(GetNode(), global, m_face);
+  NS_LOG_FUNCTION_NOARGS();
+  m_prefixes[prefix] = locator;
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper; 
+  ndnGlobalRoutingHelper.AddOrigin(prefix, GetNode());
+  FibHelper::AddRoute(GetNode(), prefix, m_face, 0);
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
+  NS_LOG_INFO("Node" << GetNode()->GetId() << " registering " << prefix << " => " << locator);
+}
+
+void
+ProbeAgent::Update(string prefix, string locator)
+{
+  NS_LOG_FUNCTION_NOARGS();
+  m_prefixes[prefix] = locator;
+  NS_LOG_INFO("Node" << GetNode()->GetId() << " updating " << prefix << " => " << locator);
+}
+
+void
+ProbeAgent::Unregister(string prefix)
+{
+  NS_LOG_FUNCTION_NOARGS();
+  m_prefixes.erase(prefix);
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+//  ndnGlobalRoutingHelper.RemoveOrigin(prefix, GetNode());
+  FibHelper::RemoveRoute(GetNode(), prefix, m_face);
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  NS_LOG_DEBUG("Node" << GetNode()->GetId() << " unregistering " << prefix);
 }
 
 } // namespace ndn

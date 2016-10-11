@@ -31,6 +31,8 @@
 
 #include <memory>
 
+using namespace std;
+
 NS_LOG_COMPONENT_DEFINE("ndn.ProbeProducer");
 
 namespace ns3 {
@@ -47,31 +49,53 @@ ProbeProducer::GetTypeId(void)
       .SetParent<App>()
       .AddConstructor<ProbeProducer>()
 
-      .AddAttribute("Catalog", "Content catalog",
-                    PointerValue(NULL),
-                    MakePointerAccessor(&ProbeProducer::m_catalog),
+      .AddAttribute("Routers", "Routers in the network",
+                    PointerValue(NULL), MakePointerAccessor(&ProbeProducer::m_routers),
                     MakePointerChecker<Catalog>())
 
-      .AddAttribute("Prefix", "Prefix, for which producer has the data", StringValue("/"),
-                    MakeNameAccessor(&ProbeProducer::m_prefix), MakeNameChecker())
-      .AddAttribute("PayloadSize", "Virtual payload size for Content packets", UintegerValue(1024),
-                    MakeUintegerAccessor(&ProbeProducer::m_virtualPayloadSize),
+      .AddAttribute("Prefix", "Prefix, for which producer has the data",
+                    StringValue("/prod"), MakeNameAccessor(&ProbeProducer::m_prefix),
+                    MakeNameChecker())
+
+      .AddAttribute("HomeAgent", "Does the producer use a home agent?",
+                    BooleanValue("true"), MakeBooleanAccessor(&ProbeProducer::m_homeAgent),
+                    MakeBooleanChecker())
+
+      .AddAttribute("Home", "Home location of the producer",
+                    VectorValue(Vector(0, 0, 0)), MakeVectorAccessor(&ProbeProducer::m_home),
+                    MakeVectorChecker())
+
+      .AddAttribute("PayloadSize", "Virtual payload size for Content packets",
+                    UintegerValue(1024), MakeUintegerAccessor(&ProbeProducer::m_virtualPayloadSize),
                     MakeUintegerChecker<uint32_t>())
+
       .AddAttribute("Freshness", "Freshness of data packets, if 0, then unlimited freshness",
-                    TimeValue(Seconds(0)), MakeTimeAccessor(&ProbeProducer::m_freshness),
+                    TimeValue(Seconds(1)), MakeTimeAccessor(&ProbeProducer::m_freshness),
                     MakeTimeChecker())
-      .AddAttribute(
-         "Signature",
-         "Fake signature, 0 valid signature (default), other values application-specific",
-         UintegerValue(0), MakeUintegerAccessor(&ProbeProducer::m_signature),
-         MakeUintegerChecker<uint32_t>())
-      .AddAttribute("KeyLocator",
-                    "Name to be used for key locator.  If root, then key locator is not used",
-                    NameValue(), MakeNameAccessor(&ProbeProducer::m_keyLocator), MakeNameChecker());
+
+      .AddAttribute("Signature", "Fake signature, 0 valid signature (default), other values application-specific",
+                    UintegerValue(0), MakeUintegerAccessor(&ProbeProducer::m_signature),
+                    MakeUintegerChecker<uint32_t>())
+
+      .AddAttribute("KeyLocator", "Name to be used for key locator.  If root, then key locator is not used",
+                    NameValue(), MakeNameAccessor(&ProbeProducer::m_keyLocator),
+                    MakeNameChecker())
+
+      .AddTraceSource("FIBChanges",
+                      "Number of FIB changes caused by movement",
+                      MakeTraceSourceAccessor(&ProbeProducer::m_FIBChanges),
+                      "ns3::ndn::ProbeProducer::FIBChangesCallback")
+
+      .AddTraceSource("ServedData",
+                      "Data served by the provider",
+                      MakeTraceSourceAccessor(&ProbeProducer::m_servedData),
+                      "ns3::ndn::ProbeProducer::ServedDataCallback");
+
   return tid;
 }
 
 ProbeProducer::ProbeProducer()
+  : m_rand(CreateObject<UniformRandomVariable>())
 {
   NS_LOG_FUNCTION_NOARGS();
 }
@@ -83,10 +107,14 @@ ProbeProducer::StartApplication()
   NS_LOG_FUNCTION_NOARGS();
   App::StartApplication();
 
-  FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
-
-  Ptr<MobilityModel> mob = this->GetNode()->GetObject<MobilityModel>();
+  Ptr<MobilityModel> mob = GetNode()->GetObject<MobilityModel>();
   mob->TraceConnectWithoutContext("CourseChange", MakeCallback(&ProbeProducer::CourseChange, this));
+  m_location = m_home;
+  if (m_homeAgent) {
+    Register();
+  } else {
+    FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
+  }
 }
 
 void
@@ -102,16 +130,14 @@ ProbeProducer::OnInterest(shared_ptr<const Interest> interest)
 {
   App::OnInterest(interest); // tracing inside
 
-  NS_LOG_FUNCTION(this << interest);
-
   if (!m_active)
     return;
 
-  Name dataName(interest->getName());
-  // dataName.append(m_postfix);
-  // dataName.appendVersion();
+  NS_LOG_FUNCTION_NOARGS();
 
-  NS_LOG_INFO(" << received request for " << dataName);
+  Name dataName(interest->getName());
+  dataName.append(to_string((int) m_location.x));
+
   auto data = make_shared<Data>();
   data->setName(dataName);
   data->setFreshnessPeriod(::ndn::time::milliseconds(m_freshness.GetMilliSeconds()));
@@ -130,42 +156,78 @@ ProbeProducer::OnInterest(shared_ptr<const Interest> interest)
 
   data->setSignature(signature);
 
-  NS_LOG_INFO(" >> sending data for " << data->getName());
-
   // to create real wire encoding
   data->wireEncode();
 
   m_transmittedDatas(data, this, m_face);
   m_face->onReceiveData(*data);
+
+  //m_servedData(this, interest->getName());
+}
+
+void
+ProbeProducer::SendInterest(string name)
+{
+  if (!m_active)
+    return;
+  
+  NS_LOG_FUNCTION_NOARGS();
+  
+  shared_ptr<Name> objectName = make_shared<Name>(name);
+  
+  shared_ptr<Interest> interest = make_shared<Interest>();
+  interest->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
+  interest->setName(*objectName);
+  
+  m_transmittedInterests(interest, this, m_face);
+  m_face->onReceiveInterest(*interest);
+
+  NS_LOG_DEBUG("Node" << GetNode()->GetId() << " sending interest " << objectName->toUri());
+}
+
+void
+ProbeProducer::Register()
+{
+  NS_LOG_FUNCTION_NOARGS();
+  FibHelper::AddRoute(GetNode(), "/loc" + to_string((int) m_home.x) + m_prefix.toUri(), m_face, 0);
+
+  SendInterest("/ha0/register" + m_prefix.toUri() + "/loc" + to_string((int) m_home.x));
+}
+
+void
+ProbeProducer::UpdateLocation()
+{
+  NS_LOG_FUNCTION_NOARGS();
+  FibHelper::AddRoute(GetNode(), "/loc" + to_string((int) m_location.x) + m_prefix.toUri(), m_face, 0);
+  SendInterest("/ha0/update" + m_prefix.toUri() + "/loc" + to_string((int) m_location.x));
 }
 
 void
 ProbeProducer::CourseChange(Ptr<const MobilityModel> model)
 {
-
-  vector<Ptr<Node>> routers = m_catalog->getRouters();
-
-  for (uint32_t i = 0; i < routers.size(); i++) {
-    cout << "Router " << i << " " <<  endl;
-    Ptr<Node> currentRouter = routers[i];
-    ndn::LinkControlHelper::FailLink(currentRouter, this->GetNode());
+  NS_LOG_FUNCTION_NOARGS();
+  Ptr<Node> router = m_routers->getRouters()[(int) m_location.x];
+  ndn::LinkControlHelper::FailLink(router, GetNode());
+  if (m_homeAgent) {
+    FibHelper::RemoveRoute(GetNode(), "/loc" + to_string((int) m_location.x) + m_prefix.toUri(), m_face);
   }
 
-  Vector pos = model->GetPosition();
-
-
-  for (uint32_t i = 0; i < routers.size(); i++) {
-    Ptr<Node> currentRouter = routers[i];
-    
-    if (currentRouter->GetId() == pos.x) {
-      ndn::LinkControlHelper::UpLink(currentRouter, this->GetNode());
-    }
+  m_location = model->GetPosition();
+  router = m_routers->getRouters()[(int) m_location.x];
+  ndn::LinkControlHelper::UpLink(router, GetNode());
+  if (m_homeAgent) {
+    FibHelper::AddRoute(GetNode(), "/loc" + to_string((int) m_location.x) + m_prefix.toUri(), m_face, 0);
   }
 
-  ndn::GlobalRoutingHelper::CalculateRoutes();
+  NS_LOG_INFO("Producer" << GetNode()->GetId() << " new position " << m_location.x);
+
+  uint32_t changes = ndn::GlobalRoutingHelper::CalculateRoutes();
+  m_FIBChanges(this, m_prefix, changes);
   ndn::GlobalRoutingHelper::PrintFIBs();
 
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << ": " << pos.x << ", " << pos.y);
+  if (m_homeAgent) {
+    SendInterest("/ha0/update" + m_prefix.toUri() + "/loc" + to_string((int) m_location.x));
+  }
 }
 
 } // namespace ndn

@@ -66,24 +66,33 @@ protected:
   StopApplication(); // Called at time specified by Stop
 
   void
+  SendInterest(string name);
+
+  void
+  Register();
+
+  void
+  UpdateLocation();
+
+  void
   CourseChange(Ptr<const MobilityModel> model);
 
-  //void
-  //onErrorFetch(uint32_t errorCode, const std::string& errorMsg);
-
-  //void
-  //afterFetchedFibEnumerationInformation(const ConstBufferPtr& dataset);
-
 protected:
+  Ptr<UniformRandomVariable> m_rand; ///< @brief nonce generator
   Name m_prefix;
+  Vector m_home;
+  Vector m_location;
   uint32_t m_virtualPayloadSize;
   Time m_freshness;
+  bool m_homeAgent;
 
   uint32_t m_signature;
   Name m_keyLocator;
 
-  Ptr<Catalog> m_catalog;
+  Ptr<Catalog> m_routers;
 
+  TracedCallback<Ptr<App>, Name> m_servedData;
+  TracedCallback<Ptr<App>, Name, uint32_t> m_FIBChanges;
 };
 
 } // namespace ndn

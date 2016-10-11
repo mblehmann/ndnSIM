@@ -97,7 +97,7 @@ public:
   /**
    * @brief Calculate for every node shortest path trees and install routes to all prefix origins
    */
-  static void
+  static uint32_t
   CalculateRoutes();
 
   /**
@@ -113,6 +113,9 @@ public:
 
   static void
   PrintFIBs();
+
+  static uint32_t
+  GetChanges();
 
 private:
   void

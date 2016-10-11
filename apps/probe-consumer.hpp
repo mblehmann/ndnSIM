@@ -25,6 +25,7 @@
 #include "ndn-app.hpp"
 
 #include "ns3/random-variable-stream.h"
+#include "ns3/traced-value.h"
 #include "ns3/nstime.h"
 #include "ns3/data-rate.h"
 
@@ -39,6 +40,8 @@
 #include <boost/multi_index/tag.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
+
+using namespace std;
 
 namespace ns3 {
 namespace ndn {
@@ -61,7 +64,7 @@ public:
 
   // From App
   virtual void
-  OnData(shared_ptr<const Data> contentObject);
+  OnData(shared_ptr<const Data> data);
 
   /**
    * @brief Actually send packet
@@ -70,8 +73,7 @@ public:
   SendPacket();
 
 public:
-  typedef void (*LastRetransmittedInterestDataDelayCallback)(Ptr<App> app, uint32_t seqno, Time delay, int32_t hopCount);
-  typedef void (*FirstInterestDataDelayCallback)(Ptr<App> app, uint32_t seqno, Time delay, uint32_t retxCount, int32_t hopCount);
+  //typedef void (*PathStretchCallback)(Ptr<App> app, Name object, int32_t hopCount, int32_t stretch, int32_t sp, int32_t distha_mp, string prodloc, Time delay);
 
 protected:
   // from App
@@ -91,16 +93,15 @@ protected:
 protected:
   Ptr<UniformRandomVariable> m_rand; ///< @brief nonce generator
 
-  uint32_t m_seq;      ///< @brief currently requested sequence number
+  Time m_request;
   EventId m_sendEvent; ///< @brief EventId of pending "send packet" event
-  double m_frequency; // Frequency of interest packets (in hertz)
+  bool m_first;
 
+  uint32_t m_objects;      ///< @brief currently requested sequence number
+  double m_frequency; // Frequency of interest packets (in hertz)
   Name m_interestName;     ///< \brief NDN Name of the Interest (use Name)
 
-  TracedCallback<Ptr<App> /* app */, uint32_t /* seqno */, Time /* delay */, int32_t /*hop count*/>
-    m_lastRetransmittedInterestDataDelay;
-  TracedCallback<Ptr<App> /* app */, uint32_t /* seqno */, Time /* delay */,
-                 uint32_t /*retx count*/, int32_t /*hop count*/> m_firstInterestDataDelay;
+  TracedCallback<Ptr<App>, Name, int32_t, int32_t, int32_t, int32_t, string, Time> m_pathStretch;
 
   /// @endcond
 };

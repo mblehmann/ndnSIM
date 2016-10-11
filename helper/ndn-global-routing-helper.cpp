@@ -60,6 +60,8 @@
 
 NS_LOG_COMPONENT_DEFINE("ndn.GlobalRoutingHelper");
 
+using namespace nfd::fw;
+
 namespace ns3 {
 namespace ndn {
 
@@ -219,13 +221,14 @@ GlobalRoutingHelper::AddOriginsForAll()
   }
 }
 
-void
+uint32_t
 GlobalRoutingHelper::CalculateRoutes()
 {
   /**
    * Implementation of route calculation is heavily based on Boost Graph Library
    * See http://www.boost.org/doc/libs/1_49_0/libs/graph/doc/table_of_contents.html for more details
    */
+  uint32_t changes = 0;
 
   BOOST_CONCEPT_ASSERT((boost::VertexListGraphConcept<boost::NdnGlobalRouterGraph>));
   BOOST_CONCEPT_ASSERT((boost::IncidenceGraphConcept<boost::NdnGlobalRouterGraph>));
@@ -281,6 +284,18 @@ GlobalRoutingHelper::CalculateRoutes()
                          << " with distance " << std::get<1>(dist.second) << " with delay "
                          << std::get<2>(dist.second));
 
+            //shared_ptr<fib::Entry> fibEntry = forwarder->getFib().findLongestPrefixMatch(*prefix);
+            if (prefix->toUri() == "/prod")
+            {
+            for (const auto& nexthops : forwarder->getFib().findLongestPrefixMatch(*prefix)->getNextHops()) {
+              shared_ptr<Face> face = std::get<0>(dist.second);
+              if (nexthops.getFace()->getId() != face->getId()) {
+                NS_LOG_DEBUG("Change for " << *prefix << ": " << nexthops.getFace()->getId() << " == " << face->getId());
+                changes++;
+              }
+            }
+            }
+
 	    FibHelper::RemoveRoutes(*node, *prefix);
 
             FibHelper::AddRoute(*node, *prefix, std::get<0>(dist.second),
@@ -290,6 +305,8 @@ GlobalRoutingHelper::CalculateRoutes()
       }
     }
   }
+  NS_LOG_DEBUG("Total changes: " << changes);
+  return changes;
 }
 
 void

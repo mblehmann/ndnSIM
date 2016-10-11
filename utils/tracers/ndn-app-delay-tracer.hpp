@@ -137,6 +137,13 @@ private:
   void
   FirstInterestDataDelay(Ptr<App> app, Name object, Time delay, uint32_t rextCount,
                          int32_t hopCount);
+
+  void
+  PathStretch(Ptr<App> app, Name object, int32_t hopCount, int32_t sp, int32_t stretch, int32_t distha_mp, std::string prodloc, Time delay);
+
+  void
+  FIBChanges(Ptr<App> app, Name object, uint32_t changes);
+
   void
   ServedData(Ptr<App> app, Name object);
 

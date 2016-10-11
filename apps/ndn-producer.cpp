@@ -97,7 +97,7 @@ Producer::OnInterest(shared_ptr<const Interest> interest)
 {
   App::OnInterest(interest); // tracing inside
 
-  NS_LOG_FUNCTION(this << interest);
+  NS_LOG_FUNCTION_NOARGS();
 
   if (!m_active)
     return;
@@ -124,7 +124,7 @@ Producer::OnInterest(shared_ptr<const Interest> interest)
 
   data->setSignature(signature);
 
-  NS_LOG_INFO("node(" << GetNode()->GetId() << ") responding with Data: " << data->getName());
+  NS_LOG_DEBUG("node(" << GetNode()->GetId() << ") responding with Data: " << data->getName());
 
   // to create real wire encoding
   data->wireEncode();

@@ -36,6 +36,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/ref.hpp>
 
+using namespace std;
+
 NS_LOG_COMPONENT_DEFINE("ndn.ProbeConsumer");
 
 namespace ns3 {
@@ -53,28 +55,28 @@ ProbeConsumer::GetTypeId(void)
 
       .AddConstructor<ProbeConsumer>()
 
-      .AddAttribute("Frequency", "Frequency of interest packets", StringValue("1.0"),
-                    MakeDoubleAccessor(&ProbeConsumer::m_frequency), MakeDoubleChecker<double>())
+      .AddAttribute("Frequency", "Frequency of interest packets",
+                    DoubleValue(1.0), MakeDoubleAccessor(&ProbeConsumer::m_frequency),
+                    MakeDoubleChecker<double>())
 
-      .AddAttribute("Prefix", "Name of the Interest", StringValue("/"),
-                    MakeNameAccessor(&ProbeConsumer::m_interestName), MakeNameChecker())
+      .AddAttribute("Prefix", "Name of the Interest",
+                    StringValue("/prod"), MakeNameAccessor(&ProbeConsumer::m_interestName),
+                    MakeNameChecker())
 
-      .AddTraceSource("LastRetransmittedInterestDataDelay",
-                      "Delay between last retransmitted Interest and received Data",
-                      MakeTraceSourceAccessor(&ProbeConsumer::m_lastRetransmittedInterestDataDelay),
-                      "ns3::ndn::Consumer::LastRetransmittedInterestDataDelayCallback")
+      .AddAttribute("Objects", "Number of Objects",
+                    UintegerValue(100), MakeUintegerAccessor(&ProbeConsumer::m_objects),
+                    MakeUintegerChecker<uint32_t>())
 
-      .AddTraceSource("FirstInterestDataDelay",
-                      "Delay between first transmitted Interest and received Data",
-                      MakeTraceSourceAccessor(&ProbeConsumer::m_firstInterestDataDelay),
-                      "ns3::ndn::Consumer::FirstInterestDataDelayCallback");
+      .AddTraceSource("PathStretch",
+                      "Path stretch of requests",
+                      MakeTraceSourceAccessor(&ProbeConsumer::m_pathStretch),
+                      "ns3::ndn::ProbeConsumer::PathStretchCallback");
 
   return tid;
 }
 
 ProbeConsumer::ProbeConsumer()
   : m_rand(CreateObject<UniformRandomVariable>())
-  , m_seq(0)
 {
   NS_LOG_FUNCTION_NOARGS();
 }
@@ -88,6 +90,7 @@ ProbeConsumer::StartApplication() // Called at time specified by Start
   // do base stuff
   App::StartApplication();
 
+  m_first = true;
   ScheduleNextPacket();
 }
 
@@ -111,23 +114,20 @@ ProbeConsumer::SendPacket()
 
   NS_LOG_FUNCTION_NOARGS();
 
-  uint32_t seq = m_seq++;
+  uint32_t objectID = m_rand->GetValue(0, m_objects);
+  shared_ptr<Name> objectName = make_shared<Name>(m_interestName);
+  objectName->append("/obj" + to_string(objectID));
 
-  //
-  shared_ptr<Name> nameWithSequence = make_shared<Name>(m_interestName);
-  nameWithSequence->appendSequenceNumber(seq);
-  //
+  NS_LOG_DEBUG("Node" << GetNode()->GetId() << " sending interest " << objectName->toUri());
 
-  // shared_ptr<Interest> interest = make_shared<Interest> ();
   shared_ptr<Interest> interest = make_shared<Interest>();
   interest->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
-  interest->setName(*nameWithSequence);
-
-  // NS_LOG_INFO ("Requesting Interest: \n" << *interest);
-  NS_LOG_INFO(" >> requesting object " << interest->getName());
+  interest->setName(*objectName);
 
   m_transmittedInterests(interest, this, m_face);
   m_face->onReceiveInterest(*interest);
+
+  m_request = Simulator::Now();  
 
   ScheduleNextPacket();
 }
@@ -135,10 +135,12 @@ ProbeConsumer::SendPacket()
 void
 ProbeConsumer::ScheduleNextPacket()
 {
-  // double mean = 8.0 * m_payloadSize / m_desiredRate.GetBitRate ();
-  // std::cout << "next: " << Simulator::Now().ToDouble(Time::S) + mean << "s\n";
-  m_sendEvent = Simulator::Schedule(Minutes(1.0 / m_frequency), &ProbeConsumer::SendPacket, this);
-
+  if (m_first) {
+    m_first = false;
+    m_sendEvent = Simulator::Schedule(Seconds(0.5), &ProbeConsumer::SendPacket, this);
+  } else {
+    m_sendEvent = Simulator::Schedule(Minutes(1.0 / m_frequency), &ProbeConsumer::SendPacket, this);
+  }
 }
 
 ///////////////////////////////////////////////////
@@ -153,23 +155,45 @@ ProbeConsumer::OnData(shared_ptr<const Data> data)
 
   App::OnData(data); // tracing inside
 
-  NS_LOG_FUNCTION(this << data);
+  NS_LOG_FUNCTION_NOARGS();
+  NS_LOG_DEBUG("Node" << GetNode()->GetId() << " receiving data " << data->getName());
 
-  // NS_LOG_INFO ("Received content object: " << boost::cref(*data));
+  //int hopCount = stoi(data->getName().at(-1));
+  uint32_t distHA_MP = stoi(data->getName().at(-1).toUri());
+  int hopCount;
+  uint32_t prodloc;
+  uint32_t sp;
+  int stretch;
 
-  // This could be a problem......
-  uint32_t seq = data->getName().at(-1).toSequenceNumber();
-  NS_LOG_INFO(" << received object data " << data->getName());
+  if (data->getName().size() == 4)
+  {
+    distHA_MP = stoi(data->getName().at(-1).toUri());
+    hopCount = distHA_MP;
+    distHA_MP--;
+    prodloc = stoi(data->getName().at(-2).toUri());
+  }
+  else
+  {
+    distHA_MP = 0;
+    hopCount = 0;
+    prodloc = stoi(data->getName().at(-1).toUri());
+  }
 
-  int hopCount = 0;
   auto ns3PacketTag = data->getTag<Ns3PacketTag>();
   if (ns3PacketTag != nullptr) { // e.g., packet came from local node's cache
     FwHopCountTag hopCountTag;
     if (ns3PacketTag->getPacket()->PeekPacketTag(hopCountTag)) {
-      hopCount = hopCountTag.Get();
+      hopCount += (hopCountTag.Get()-1);
       NS_LOG_DEBUG("Hop count: " << hopCount);
     }
   }
+
+  if (GetNode()->GetId() > prodloc) sp = GetNode()->GetId() - prodloc;
+  else sp = prodloc - GetNode()->GetId();
+  stretch = hopCount - sp;
+
+  m_pathStretch(this, data->getName(), hopCount, sp, stretch, distHA_MP, data->getName().at(-2).toUri(), Simulator::Now() - m_request); 
+  //NS_LOG_INFO("Consumer" << GetNode()->GetId() << " hc: " << hopCount << " stretch: " << stretch << " shortest-path: " << sp << " dist(HA,MP): " << distHA_MP << " producer-location: " << data->getName().at(-2));
 
 }
 

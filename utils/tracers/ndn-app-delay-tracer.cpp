@@ -205,6 +205,12 @@ AppDelayTracer::Connect()
   Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/FirstInterestDataDelay",
                                 MakeCallback(&AppDelayTracer::FirstInterestDataDelay, this));
 
+  Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/PathStretch",
+                                MakeCallback(&AppDelayTracer::PathStretch, this));
+
+  Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/FIBChanges",
+                                MakeCallback(&AppDelayTracer::FIBChanges, this));
+
   Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/ServedData",
                                 MakeCallback(&AppDelayTracer::ServedData, this));
 }
@@ -253,6 +259,23 @@ AppDelayTracer::FirstInterestDataDelay(Ptr<App> app, Name object, Time delay, ui
         << "FullDelay"
         << "\t" << delay.ToDouble(Time::S) << "\t" << delay.ToDouble(Time::US) << "\t" << retxCount
         << "\t" << hopCount << "\n";
+}
+
+void
+AppDelayTracer::PathStretch(Ptr<App> app, Name object, int32_t hopCount, int32_t sp, int32_t stretch, int32_t distha_mp, std::string prodloc, Time delay)
+{
+  *m_os << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t" << app->GetId() << "\t"
+        << object << "\t"
+        << "PathStretch"
+        << "\t" << hopCount << "\t" << sp << "\t" << stretch << "\t" << distha_mp << "\t" << prodloc
+        << "\t" << delay.ToDouble(Time::S) << "\n";
+}
+
+void
+AppDelayTracer::FIBChanges(Ptr<App> app, Name object, uint32_t changes)
+{
+  *m_os << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t" << app->GetId() << "\t"
+        << object << "\t" << "FIBChanges" << "\t" << changes << "\n";
 }
 
 void

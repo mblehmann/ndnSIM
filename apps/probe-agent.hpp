@@ -30,6 +30,7 @@
 #include "ns3/nstime.h"
 #include "ns3/ptr.h"
 
+#include "ns3/ndnSIM/utils/ndn-fw-hop-count-tag.hpp"
 #include "helper/ndn-link-control-helper.hpp"
 #include <utils/ndn-catalog.hpp>
 #include <vector>
@@ -62,10 +63,13 @@ public:
   OnData(shared_ptr<const Data> data);
 
   virtual void
-  Register(Name global, Name local);
+  Register(string prefix, string locator);
 
   virtual void
-  Unregister(Name global);
+  Update(string prefix, string locator);
+
+  virtual void
+  Unregister(string prefix);
 
 protected:
   // inherited from Application base class.
@@ -76,8 +80,9 @@ protected:
   StopApplication(); // Called at time specified by Stop
 
 protected:
-  map<Name, Name> m_globals;
-  map<Name, Name> m_locals;
+  Name m_prefix;
+
+  map<string, string> m_prefixes;
 };
 
 } // namespace ndn

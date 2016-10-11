@@ -29,6 +29,8 @@
 #include "model/ndn-l3-protocol.hpp"
 #include "ns3/ndnSIM/helper/ndn-link-control-helper.hpp"
 
+using namespace std;
+
 namespace ns3 {
 
 /**
@@ -57,111 +59,110 @@ main(int argc, char* argv[])
   // setting default parameters for PointToPoint links and channels
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Mbps"));
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
-  Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
+  Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("100"));
+
+  uint32_t n; 
+  uint32_t obj;
 
   // Read optional command-line parameters (e.g., enable visualizer with ./waf --run=<> --visualize
   CommandLine cmd;
+  cmd.AddValue("n", "number of nodes", n);
+  cmd.AddValue("obj", "number of objects", obj);
   cmd.Parse(argc, argv);
-
-  uint32_t n = 4;
 
   // Creating nodes
   NodeContainer nodes;
   nodes.Create(n);
-  Ptr<Node> producer = nodes.Get(3);
-  Ptr<Node> homeagent = nodes.Get(1);
+
+  NodeContainer consumers;
+  for (int i = 0; i < n-1; i++) {
+    consumers.Add(nodes.Get(i));
+  }
+  Ptr<Node> producer = nodes.Get(n-1); 
 
   // Connecting nodes using two links
   PointToPointHelper p2p;
-  for (uint32_t i = 0; i < n-2; i++) {
-   p2p.Install(nodes.Get(i), nodes.Get(i+1));
+  Ptr<ns3::ndn::Catalog> catalog = Create<ns3::ndn::Catalog>();
+  for (uint32_t i = 0; i < consumers.GetN()-1; i++) {
+    p2p.Install(consumers.Get(i), consumers.Get(i+1));
   }
 
-  for (uint32_t i = 0; i < n-1; i++) {
-   p2p.Install(nodes.Get(i), producer);
+  for (uint32_t i = 0; i < consumers.GetN(); i++) {
+    p2p.Install(consumers.Get(i), producer);
+    catalog->addRouter(nodes.Get(i));
   }
 
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
-  ndnHelper.SetDefaultRoutes(true);
+  ndnHelper.SetOldContentStore("ns3::ndn::cs::Nocache");
+  ndnHelper.SetDefaultRoutes(false);
   ndnHelper.InstallAll();
 
-  // Choosing forwarding strategy
-  ndn::StrategyChoiceHelper::InstallAll("/prefix", "/localhost/nfd/strategy/best-route");
-  ndn::StrategyChoiceHelper::InstallAll("/hint", "/localhost/nfd/strategy/multicast");
-  ndn::StrategyChoiceHelper::InstallAll("/vicinity", "/localhost/nfd/strategy/multicast");
-
-  //ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
-  //ndnGlobalRoutingHelper.InstallAll();
-
-  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
-  Ptr<ns3::ndn::Catalog> catalog = Create<ns3::ndn::Catalog>();
-  for (uint32_t i = 0; i < n-1; i++)
-  {
-    catalog->addRouter(nodes.Get(i));
-    positionAlloc->Add(Vector(i, 0, 0));
-  }
+  Ptr<RandomVariableStream> indexes = CreateObject<UniformRandomVariable>();
+  indexes->SetAttribute("Min", DoubleValue(0));
+  indexes->SetAttribute("Max", DoubleValue(n-1));
+  Ptr<RandomPositionAllocator> positionAlloc = CreateObject<RandomPositionAllocator>();
+  positionAlloc->SetIndex(indexes);
 
   // Installing applications
 
-  string globalprefix = "/global";
-  string localprefix = "/local";
+  string prefix = "/prod";
 
   // Probe Consumer
   ndn::AppHelper consumerHelper("ns3::ndn::ProbeConsumer");
   // Consumer will request /prefix/0, /prefix/1, ...
-  consumerHelper.SetPrefix(globalprefix);
-  consumerHelper.SetAttribute("Frequency", StringValue("1")); // 10 interests a second
-  consumerHelper.Install(nodes.Get(0));                        // first node
-
-  ndn::AppHelper agentHelper("ns3::ndn::ProbeAgent");
-  agentHelper.Install(homeagent);
+  consumerHelper.SetPrefix(prefix);
+  consumerHelper.SetAttribute("Frequency", DoubleValue(6.0)); // 6 interests a minute
+  consumerHelper.SetAttribute("Objects", UintegerValue(obj)); // 100 objects
+  consumerHelper.Install(consumers).Start(Seconds(2));                     
 
   // Producer
-  
+
+  uint32_t hn = (int) positionAlloc->GetNext().x;  
+
   ndn::AppHelper producerHelper("ns3::ndn::ProbeProducer");
   // Producer will reply to all requests starting with /prefix
-  producerHelper.SetPrefix(localprefix);
-  producerHelper.SetAttribute("PayloadSize", StringValue("0"));
-  producerHelper.SetAttribute("Catalog", PointerValue(catalog));
+  producerHelper.SetPrefix(prefix);
+  producerHelper.SetAttribute("PayloadSize", UintegerValue(1024));
+  producerHelper.SetAttribute("Home", VectorValue(Vector(hn,0,0)));
+  producerHelper.SetAttribute("Routers", PointerValue(catalog));
+  producerHelper.SetAttribute("HomeAgent", BooleanValue(false));
   producerHelper.Install(producer); // last node
 
-  for (uint32_t i = 0; i < n-1; i++) {
-    ndn::LinkControlHelper::FailLink(nodes.Get(i), producer);
+  for (uint32_t i = 0; i < consumers.GetN(); i++) {
+    if (i == hn) ndn::LinkControlHelper::UpLink(consumers.Get(i), producer);
+    else ndn::LinkControlHelper::FailLink(consumers.Get(i), producer);
   }
-  ndn::LinkControlHelper::UpLink(nodes.Get(1), producer);
 
   // Mobility
   MobilityHelper mobility;
 
-  Ptr<RandomVariableStream> movement;
-  movement = CreateObject<ConstantRandomVariable>();
-  movement->SetAttribute("Constant", DoubleValue(1));
+  Ptr<RandomVariableStream> frequency;
+  frequency = CreateObject<ConstantRandomVariable>();
+  frequency->SetAttribute("Constant", DoubleValue(10));
   
-  Ptr<RandomVariableStream> session;
-  session = CreateObject<ConstantRandomVariable>();
-  session->SetAttribute("Constant", DoubleValue(0.5));
-
   // Initialize positions of nodes
   mobility.SetPositionAllocator(positionAlloc);
 
-  mobility.SetMobilityModel("ns3::OnOffMobilityModel",
-                            "Movement", PointerValue(movement),
-                            "Session", PointerValue(session),
+  mobility.SetMobilityModel("ns3::RandomMobilityModel",
+                            "Frequency", PointerValue(frequency),
                             "PositionAllocator", PointerValue(positionAlloc));
 
   mobility.Install(producer);
 
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
   ndnGlobalRoutingHelper.InstallAll();
-  ndnGlobalRoutingHelper.AddOrigins(globalprefix, homeagent);
-  ndnGlobalRoutingHelper.AddOrigins(localprefix, producer);
+
+  ndnGlobalRoutingHelper.AddOrigin(prefix, producer);
 
   // Calculate and install FIBs
   ndn::GlobalRoutingHelper::CalculateRoutes();
-  ndn::GlobalRoutingHelper::PrintFIBs();  
+  //ndn::GlobalRoutingHelper::PrintFIBs();  
 
-  Simulator::Stop(Seconds(200.0));
+  Simulator::Stop(Seconds(30000.0));
+
+//  ndn::AppDelayTracer::Install(consumers, "saida.txt");
+  ndn::AppDelayTracer::InstallAll("name-n="+to_string(n)+"-hn="+to_string(hn)+"-obj="+to_string(obj)+".dat");
 
   Simulator::Run();
   Simulator::Destroy();
