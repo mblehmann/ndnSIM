@@ -182,6 +182,16 @@ GlobalRoutingHelper::InstallAll()
 }
 
 void
+GlobalRoutingHelper::RemoveOrigin(const std::string& prefix, Ptr<Node> node)
+{
+  Ptr<GlobalRouter> gr = node->GetObject<GlobalRouter>();
+  NS_ASSERT_MSG(gr != 0, "GlobalRouter is not installed on the node");
+
+  auto name = make_shared<Name>(prefix);
+  gr->RemoveLocalPrefix(name);
+}
+
+void
 GlobalRoutingHelper::AddOrigin(const std::string& prefix, Ptr<Node> node)
 {
   Ptr<GlobalRouter> gr = node->GetObject<GlobalRouter>();
@@ -280,9 +290,9 @@ GlobalRoutingHelper::CalculateRoutes()
         }
         else {
           for (const auto& prefix : dist.first->GetLocalPrefixes()) {
-            NS_LOG_DEBUG(" prefix " << prefix << " reachable via face " << *std::get<0>(dist.second)
-                         << " with distance " << std::get<1>(dist.second) << " with delay "
-                         << std::get<2>(dist.second));
+            //NS_LOG_DEBUG(" prefix " << prefix << " reachable via face " << *std::get<0>(dist.second)
+            //             << " with distance " << std::get<1>(dist.second) << " with delay "
+            //             << std::get<2>(dist.second));
 
             //shared_ptr<fib::Entry> fibEntry = forwarder->getFib().findLongestPrefixMatch(*prefix);
             if (prefix->toUri() == "/prod")
@@ -297,7 +307,9 @@ GlobalRoutingHelper::CalculateRoutes()
             }
 
 	    FibHelper::RemoveRoutes(*node, *prefix);
+          }
 
+          for (const auto& prefix : dist.first->GetLocalPrefixes()) {
             FibHelper::AddRoute(*node, *prefix, std::get<0>(dist.second),
                                 std::get<1>(dist.second));
           }
@@ -428,10 +440,9 @@ GlobalRoutingHelper::PrintFIBs()
      auto face = dynamic_pointer_cast<ndn::Face>(nextHop.getFace());
      NS_LOG_DEBUG(face->getId() << " (cost=" << nextHop.getCost() << "), ");
     }
-    NS_LOG_DEBUG(")");
+    }
    }
    }
-  }
 }
 
 } // namespace ndn

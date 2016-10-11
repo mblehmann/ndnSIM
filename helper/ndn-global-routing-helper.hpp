@@ -64,6 +64,9 @@ public:
   void
   InstallAll();
 
+  void
+  RemoveOrigin(const std::string& prefix, Ptr<Node> node);
+
   /**
    * @brief Add `prefix' as origin on `node'
    * @param prefix Prefix that is originated by node, e.g., node is a producer for this prefix

@@ -41,6 +41,7 @@
 #include "utils/ndn-rtt-mean-deviation.hpp"
 
 #include "helper/ndn-fib-helper.hpp"
+#include "helper/ndn-global-routing-helper.hpp"
 
 #include "helper/ndn-global-routing-helper.hpp"
 #include "helper/ndn-link-control-helper.hpp"
@@ -180,12 +181,11 @@ MobileUser::MobileUser()
 void
 MobileUser::StartApplication() 
 {
-  NS_LOG_DEBUG("oi");
   App::StartApplication();
-  if (m_prefix == "/prod0") FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
+  FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
   FibHelper::AddRoute(GetNode(), "/hint", m_face, 0);
   FibHelper::AddRoute(GetNode(), "/vicinity", m_face, 0);
-
+  
   Ptr<MobilityModel> mob = this->GetNode()->GetObject<MobilityModel>();
   mob->TraceConnectWithoutContext("CourseChange", MakeCallback(&MobileUser::CourseChange, this));
 
@@ -196,16 +196,37 @@ MobileUser::StartApplication()
 
   m_windowSize = m_initialWindowSize;
 
-  Vector pos = mob->GetPosition();
+  m_position = mob->GetPosition();
+  vector<Ptr<Node>> routers = m_catalog->getRouters();
+  ndn::LinkControlHelper::UpLink(this->GetNode(), routers[m_position.x]);
+
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
+
   m_popularity = m_catalog->getUserPopularity();
 
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " initial position at router " << pos.x << " with popularity " << m_popularity);
+  // Set probing model - NOT FINAL SOLUTION
+  m_hintProbing = true;
+  m_probingModel = "ranked";
+  //m_probingModel = "random";
+
+  // Set Availability and Interested attributes for each user
+  //m_userAvailability = 1;
+  m_userAvailability = (uint32_t) m_rand->GetValue(1,6);
+  m_userInterested = true;
+
+  // Set thresholds for vicinity probing - TEMPORARY SOLUTION
+  m_availabilityThreshold = 3; 
+  m_interestedThreshold = true;
+ 
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " initial position at router " << m_position.x << " with popularity " << m_popularity << " and availability " << m_userAvailability );
 
   if (!m_publishTime.IsZero())
     Simulator::Schedule(m_publishTime, &MobileUser::PublishContent, this);
 
   Simulator::Schedule(m_catalog->getMaxSimulationTime() - Seconds(0.1), &MobileUser::EndGame, this);
 }
+
 
 /**
  * Operations executed at the end of the application.
@@ -293,7 +314,8 @@ MobileUser::CheckRetxTimeout()
 {
   Time now = Simulator::Now();
   Time rto = m_rtt->RetransmitTimeout();
-  
+//  NS_LOG_INFO ("Current RTO: " << rto.ToDouble (Time::S) << "s");
+
   Name entryName;
   Time entryTime;
 
@@ -311,6 +333,8 @@ MobileUser::CheckRetxTimeout()
         entryTime = it->second;
       }   
     }
+
+//    NS_LOG_INFO("ENTRY: " << entryTime + rto << " " << now);
 
     if (entryTime + rto <= now)
     {
@@ -349,28 +373,58 @@ MobileUser::OnInterest(shared_ptr<const Interest> interest)
 
   if (Name("/hint").isPrefixOf(objectName))
   {
-    respondHint(interest);
+    RespondHint(interest);
   }
   else if (Name("/vicinity").isPrefixOf(objectName))
   {
-    respondVicinity(interest);
+    RespondVicinity(interest);
   }
   else
   {
-    respondInterest(interest);
+    RespondInterest(interest);
   }
 
 }
 void
-MobileUser::respondHint(shared_ptr<const Interest> interest)
+MobileUser::RespondHint(shared_ptr<const Interest> interest)
 {
   Name objectName = interest->getName().getSubName(1, 2);
   uint32_t nodeId = interest->getNodeId();
+  StrategySelectors incomingSelectors = interest->getStrategySelectors();
 
-  if (nodeId == this->GetNode()->GetId()) {
+  /** CHECK HINTPROBING FLAG -> COMPARE THRESHOLDS -> SEND INTEREST
+   * Test if hintProbing is active. Case it is not, test if Hint is being sent to the right user. 
+   * During hintProbing, the Hint is flooded to the Vicinity, with no targeted user.
+   * Only Consumers meeting the criteria can send back responses
+   */
+
+  if (m_hintProbing) {
+    if (!incomingSelectors.empty()) {
+      if (m_userInterested == incomingSelectors.getInterested() && m_userAvailability <= incomingSelectors.getAvailability()) {
+        if (m_providedObjects.size() == m_cacheSize) {
+          uint32_t pos = (uint32_t) m_rand->GetValue(0, m_cacheSize);
+          Name removedObject = m_providedObjects[pos];
+	  UnannounceContent(removedObject);
+          FibHelper::RemoveRoute(GetNode(), removedObject, m_face);
+          m_providedObjects.erase(m_providedObjects.begin() + pos);
+        }
+
+        NS_LOG_DEBUG("Node " << GetNode()->GetId() << " received hint and meets the criteria. Will now reques object " << objectName);
+
+        AddInterestObject(objectName);
+        m_providedObjects.push_back(objectName);
+      }
+      else {
+        return;
+      }
+    }
+  }
+  
+  else if (nodeId == this->GetNode()->GetId() ) {
     if (m_providedObjects.size() == m_cacheSize) {
       uint32_t pos = (uint32_t) m_rand->GetValue(0, m_cacheSize);
       Name removedObject = m_providedObjects[pos];
+      UnannounceContent(removedObject);
       FibHelper::RemoveRoute(GetNode(), removedObject, m_face);
       m_providedObjects.erase(m_providedObjects.begin() + pos);
     }
@@ -380,10 +434,12 @@ MobileUser::respondHint(shared_ptr<const Interest> interest)
     AddInterestObject(objectName);
     m_providedObjects.push_back(objectName);
   }
+  
+    
 }
 
-void
-MobileUser::respondVicinity(shared_ptr<const Interest> interest)
+uint32_t
+MobileUser::RespondVicinity(shared_ptr<const Interest> interest)
 {
   Name objectName = interest->getName();
 
@@ -392,12 +448,52 @@ MobileUser::respondVicinity(shared_ptr<const Interest> interest)
   vicinityData->setName(objectName);
   vicinityData->setFreshnessPeriod(::ndn::time::milliseconds(0));
 
-  StrategySelectors responseData = interest->getStrategySelectors();
-  responseData.setNodeId(this->GetNode()->GetId());
-  responseData.setInterested(true);
-  responseData.setAvailability(1);
+  // Create an empty strategy selector for the Vicinity Data packet 
+  StrategySelectors responseSelectors = StrategySelectors();
+  // Store strategy selectors from incoming Vicinity packet (Producer Thresholds)
+  StrategySelectors incomingSelectors = interest->getStrategySelectors();
+ 
+  NS_LOG_DEBUG("Node " << this->GetNode()->GetId() << " received vicinity probing with parameters " << incomingSelectors.getInterested() << " / " << incomingSelectors.getAvailability());
+ 
+  /* Will call method to compare user parameters with incomingData parameters
+    for now, the comparison is made directly in this method */
 
-  vicinityData->setContent(responseData.wireEncode());
+  /* First step, test incomingSelectors for default values.
+       If the values are different, the user will send a response according
+      to the thresholds set by the Producer. 
+        If the Consumer is not Interested on providing that content, returns code 1 and does not send response.
+        If the Consumer is Interested but does not meet the threshold, return 2 and does not send response.
+        If Consumer is interested and meets the thresholds, return 0 and sends customized response.
+       In case the selectors are default, the Producer doesnt need any information, return 0 and 
+      sends defaults response. */
+
+  if(!incomingSelectors.empty())
+  {
+    responseSelectors.setNodeId(this->GetNode()->GetId());
+    
+    // compare user interest with producer thresholds
+    if(m_userInterested == incomingSelectors.getInterested())
+    {
+      responseSelectors.setInterested(m_userInterested);
+    }
+    else
+    {
+      return 1;
+    }
+    // compare user availability with producer threshold
+    if(m_userAvailability <= incomingSelectors.getAvailability())
+    {
+      responseSelectors.setAvailability(m_userAvailability);
+    }
+    else
+    {
+      return 2;
+    }
+  }
+  
+  NS_LOG_DEBUG("Node " << this->GetNode()->GetId() << " responded vicinity probing with parameters " << responseSelectors.getInterested() << " / " << responseSelectors.getAvailability());
+  
+  vicinityData->setContent(responseSelectors.wireEncode());
 
   // Add signature
   Signature signature;
@@ -412,20 +508,36 @@ MobileUser::respondVicinity(shared_ptr<const Interest> interest)
 
   vicinityData->setSignature(signature);
 
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " responded vicinity discovery for object " << vicinityData->getName());
+  //NS_LOG_DEBUG("Node " << GetNode()->GetId() << " responded vicinity discovery for object " << vicinityData->getName());
 
   // Send the packet
   vicinityData->wireEncode();
 
   m_transmittedDatas(vicinityData, this, m_face);
   m_face->onReceiveData(*vicinityData);
+
+  return 0;
 }
 
 void
-MobileUser::respondInterest(shared_ptr<const Interest> interest)
+MobileUser::RespondInterest(shared_ptr<const Interest> interest)
 {
   Name dataName(interest->getName());
 
+  // TO DO : CHECK HINTPROBING FLAG -> CHECK INCOMING INTEREST FOR SELECTORS -> PUSH CONSUMER INTO VICINITY
+  /*if (m_hintProbing) {
+    StrategySelectors incomingSelectors = interest->getStrategySelectors();
+    
+    if(!incomingSelectors.empty()) {
+      UserInformation userInfo = UserInformation(incomingSelectors.getNodeId(), incomingSelectors.getAvailability(), incomingSelectors.getInterested());
+      m_vicinity.push_back(userInfo);
+
+      NS_LOG_DEBUG("Node " << GetNode()->GetId() << " vicinity is :");
+      for(uint32_t i=0;i<m_vicinity.size();i++)
+        NS_LOG_DEBUG("Node " << m_vicinity[i].GetNodeId() << " has availablity " << m_vicinity[i].GetAvailability());
+     }
+  } */
+  
   // Create data packet
   auto data = make_shared<Data>();
   data->setName(dataName);
@@ -472,29 +584,55 @@ MobileUser::OnData(shared_ptr<const Data> data)
 
   if (Name("/vicinity").isPrefixOf(objectName))
   {
-    respondVicinityData(data);
+    RespondVicinityData(data);
   }
   else
   {
-    respondData(data);
+    RespondData(data);
   }
 }
 
 void
-MobileUser::respondVicinityData(shared_ptr<const Data> data)
+MobileUser::RespondVicinityData(shared_ptr<const Data> data)
 {
   Block block = data->getContent();
   block.parse();
-  StrategySelectors responseData = StrategySelectors(*block.elements_begin()); 
+  StrategySelectors incomingSelectors = StrategySelectors(*block.elements_begin()); 
+  
+  UserInformation userInfo = UserInformation(incomingSelectors.getNodeId(), incomingSelectors.getAvailability(), incomingSelectors.getInterested());
  
-  m_vicinity.push_back(responseData.getNodeId());
+  /* Pushes Consumer directly into the Vicinity. If the probingModel is set to ranked, sorting
+    is performed later during Device Selection. */
+  NS_LOG_DEBUG("Node " << incomingSelectors.getNodeId() << " was added to node " << GetNode()->GetId() << " vicinity");
+  m_vicinity.push_back(userInfo);
+ 
+  /*
+    ALTERNATIVE : this strategy consider an ordered insertion 
+     Depending on the probing model the producer will deal with the
+      Vicinity Response accordingly.
+  
+  if(!m_probingModel.compare("ranked"))
+  { 
+    NS_LOG_DEBUG("Node " << incomingSelectors.getNodeId() << " was added to node " << GetNode()->GetId() << " vicinity");
+    
+    // Will call method for ranked insertion on the vicinity (binary insertion)
+    m_vicinity.push_back(incomingSelectors.getNodeId());
+  }
+  
+  if(!m_probingModel.compare("random"))
+  {
+    NS_LOG_DEBUG("Node " << incomingSelectors.getNodeId() << " was added to node " << GetNode()->GetId() << " vicinity");
+    m_vicinity.push_back(incomingSelectors.getNodeId());
+  } */
 }
 
 void
-MobileUser::respondData(shared_ptr<const Data> data)
+MobileUser::RespondData(shared_ptr<const Data> data)
 {
   Name objectName = data->getName();
-
+ 
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " got data packet for object " << objectName);
+ 
   // Update the pending interest requests
   m_pendingObjects.remove(objectName);
   m_pendingInterests--;
@@ -543,7 +681,7 @@ MobileUser::respondData(shared_ptr<const Data> data)
     FwHopCountTag hopCountTag;
     if (ns3PacketTag->getPacket()->PeekPacketTag(hopCountTag)) {
       hopCount = hopCountTag.Get();
-      NS_LOG_DEBUG("Hop count: " << hopCount);
+      //NS_LOG_DEBUG("Hop count: " << hopCount);
     }
   }
 
@@ -649,6 +787,11 @@ MobileUser::SendInterestPacket(bool timeout)
   time::milliseconds interestLifeTime(m_interestLifeTime.GetMilliSeconds());
   interest->setInterestLifetime(interestLifeTime);
 
+  if(m_hintProbing) {
+    interest->setAvailability(m_userAvailability);
+    interest->setInterested(m_userAvailability);
+  }
+
   // Send packet
   WillSendOutInterest(object);
 
@@ -658,6 +801,8 @@ MobileUser::SendInterestPacket(bool timeout)
   // Pending objects control
   m_pendingObjects.push_back(interest->getName());
   m_pendingInterests++;
+
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " sent an INTEREST for object " << object);
 
   ScheduleNextInterestPacket(timeout);
 }
@@ -758,7 +903,7 @@ MobileUser::ConcludeObjectDownload(Name objectName)
 
   for (uint32_t i = 0; i < m_providedObjects.size(); i++) {
     if (objectName == m_providedObjects[i]) {
-      AnnounceContent(objectName);
+      AnnounceContent(objectName, true);
       FibHelper::AddRoute(GetNode(), objectName, m_face, 0);
       break;
     }
@@ -778,30 +923,46 @@ MobileUser::ConcludeObjectDownload(Name objectName)
 void
 MobileUser::AnnounceContent()
 {
-  for (uint32_t i = 0; i < m_generatedContent.size(); i++) {
-    AnnounceContent(m_generatedContent[i]);
-  }
+//  for (uint32_t i = 0; i < m_generatedContent.size(); i++) {
+//    AnnounceContent(m_generatedContent[i], false);
+//  }
   for (uint32_t i = 0; i < m_providedObjects.size(); i++) {
-    AnnounceContent(m_providedObjects[i]);
-  }   
+    AnnounceContent(m_providedObjects[i], false);
+  }
+//  if (m_providedObjects.size() > 0) {
+//    ndn::GlobalRoutingHelper::CalculateRoutes();
+//    ndn::GlobalRoutingHelper::PrintFIBs();
+//  }
 }
 
 /**
+
  * Announce a specific content object.
  * Creates an announcement packet and sends it.
  */
 void
-MobileUser::AnnounceContent(Name object)
+MobileUser::AnnounceContent(Name object, bool update)
 {
-  // Create the announcement packet
-//  shared_ptr<Announcement> announcement = make_shared<Announcement>(object);
-//  announcement->setNonce(m_rand->GetValue(0, numeric_limits<uint32_t>::max()));
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " announced object " << object << " at " << m_position.x);
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+//  ndnGlobalRoutingHelper.InstallAll();  
+  ndnGlobalRoutingHelper.AddOrigin(object.toUri(), this->GetNode());
+  
+  if (update) {
+    ndn::GlobalRoutingHelper::CalculateRoutes();
+    ndn::GlobalRoutingHelper::PrintFIBs();
+  }
+}
 
-  // Send the packet
-//  announcement->wireEncode();
+void
+MobileUser::UnannounceContent(Name object)
+{
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+//  ndnGlobalRoutingHelper.InstallAll();  
+  ndnGlobalRoutingHelper.RemoveOrigin(object.toUri(), GetNode());
 
-//  m_transmittedAnnouncements(announcement, this, m_face);
-//  m_face->onReceiveAnnouncement(*announcement);
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
 }
 
 // PRODUCER ACTIONS
@@ -847,11 +1008,11 @@ MobileUser::PublishContent()
 
   AdvertiseContent(newObject);
 
-  AnnounceContent(newObject);
+  //AnnounceContent(newObject, false);
 
-  if (m_vicinitySize > 0)
+  if (m_vicinitySize > 0 && !m_hintProbing)
   {
-    DiscoverVicinity(newObject);
+    ProbeVicinity(newObject);
   }
 
   if (m_replicationDegree > 0)
@@ -885,7 +1046,7 @@ MobileUser::CreateContentName()
 void
 MobileUser::GenerateContent(Name object)
 {
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " published object " << object << " " << m_popularity);
+  //NS_LOG_DEBUG("Node " << GetNode()->GetId() << " published object " << object << " " << m_popularity);
   m_catalog->addObject(object, m_popularity);
 
   objectProperties p = m_catalog->getObjectProperties(object);
@@ -930,7 +1091,7 @@ MobileUser::AdvertiseContent(Name newObject)
  * Sends a vicinity packet with a given scope.
  */
 void
-MobileUser::DiscoverVicinity(Name object)
+MobileUser::ProbeVicinity(Name object)
 {
   m_vicinity.clear();
 
@@ -946,6 +1107,15 @@ MobileUser::DiscoverVicinity(Name object)
 
   vicinity->setScope(m_vicinitySize);
 
+  // In this step the vicinity packet is set with the producer threshold
+  // Threshold values will determine the type of probing performed (ranked, limited ranked, random)
+  if(!m_probingModel.compare("ranked"))
+  {
+    vicinity->setInterested(m_interestedThreshold);
+    vicinity->setAvailability(m_availabilityThreshold);
+  }
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " sent vicinity probing packet " << vicinity->getName());
+  
   // Send the packet
   vicinity->wireEncode();
 
@@ -967,24 +1137,66 @@ MobileUser::PushContent(Name objectName)
     return;
   }
 
-  if (m_vicinity.size() > 0) {
-    int deviceId;
+  if (!m_hintProbing) {
+    if (m_vicinity.size() > 0) {
+      int deviceId;
 
-    for (uint32_t i = 0; i < m_replicationDegree; i++) {
-      deviceId = SelectDevice();
-      HintContent(deviceId, objectName);
+      if (m_probingModel == "ranked")
+      {  
+        SortVicinity();  
+        for (uint32_t i = 0; i < m_replicationDegree; i++) {
+          deviceId = m_vicinity[i].GetNodeId();
+          HintContent(deviceId, objectName);
+        }
+      }
+
+      else if(m_probingModel == "random")
+      {
+        for (uint32_t i = 0; i < m_replicationDegree; i++) {
+          deviceId = SelectRandomDevice(); 
+          HintContent(deviceId, objectName);
+        }
+      }
     }
+  }
+  else {
+    /**
+     * If hintProbing is active, Producer will flood its scope with hints containing parameters thresholds
+     * and only Consumers that meet the criteria will send responses.
+    */
+    HintContent(-1, objectName);
   }
 }
 
 /**
- * Select a device from the vicinity.
+ * @brief Basic compare function to compare two elements during qsort algorithm
+ */
+
+static int compare (const void* p1, const void* p2)
+{
+  return ( (*(UserInformation*)p1).GetAvailability() - (*(UserInformation*)p2).GetAvailability() ); 
+}
+
+/**
+ * Sort the vicinity based on device availability. 
+ */
+void
+MobileUser::SortVicinity()
+{
+  qsort(m_vicinity.data(), m_vicinity.size(), sizeof(UserInformation), compare);
+  NS_LOG_DEBUG("Vicinity from node " << this->GetNode()->GetId());
+  for(uint32_t k=0;k<m_vicinity.size();k++)
+    NS_LOG_DEBUG("Node " << m_vicinity[k].GetNodeId() << " has availability " << m_vicinity[k].GetAvailability());
+}
+
+/**
+ * Select a random device from the vicinity.
  */
 int
-MobileUser::SelectDevice()
+MobileUser::SelectRandomDevice()
 {
   int position = m_rand->GetValue(0, m_vicinity.size());
-  return m_vicinity[position];
+  return m_vicinity[position].GetNodeId();
 }
 
 /**
@@ -1005,11 +1217,18 @@ MobileUser::HintContent(int deviceId, Name objectName)
   hint->setName(hintName);
   time::milliseconds hintLifeTime(m_hintTimer.GetMilliSeconds());
   hint->setInterestLifetime(hintLifeTime);
-
-  hint->setNodeId(deviceId);
   hint->setScope(m_vicinitySize);
   
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " hinted content " << hint->getName() << " for device " << hint->getNodeId() << " in " << hint->getScope() << " hops");
+  if(m_hintProbing)
+  {
+    hint->setAvailability(m_availabilityThreshold);
+    hint->setInterested(m_interestedThreshold);
+    NS_LOG_DEBUG("Node " << GetNode()->GetId() << " sent Hint probe " << hint->getName() << " for  all devices in " << hint->getScope() << " hops");
+  }
+  else {
+    hint->setNodeId(deviceId);
+    NS_LOG_DEBUG("Node " << GetNode()->GetId() << " hinted content " << hint->getName() << " for device " << hint->getNodeId() << " in " << hint->getScope() << " hops");
+  }
 
   // Send the packet
   hint->wireEncode();
@@ -1033,10 +1252,10 @@ MobileUser::Move(Ptr<const MobilityModel> model)
   Ptr<Node> currentRouter;
   Ptr<MobilityModel> mob;
 
-  for (uint32_t i = 0; i < routers.size(); i++) {
-    Ptr<Node> currentRouter = routers[i];
-    ndn::LinkControlHelper::FailLink(this->GetNode(), currentRouter);
-  }
+//  for (uint32_t i = 0; i < routers.size(); i++) {
+//    Ptr<Node> currentRouter = routers[i];
+  ndn::LinkControlHelper::FailLink(this->GetNode(), routers[m_position.x]);
+//  }
 
   NS_LOG_DEBUG("Node " << GetNode()->GetId() << " started movement");
 }
@@ -1049,12 +1268,14 @@ MobileUser::Session(Ptr<const MobilityModel> model)
 {
   m_moving = false;
  
-  Vector pos = model->GetPosition();
+  m_position = model->GetPosition();
 
   vector<Ptr<Node>> routers = m_catalog->getRouters();
   Ptr<Node> currentRouter;
   Ptr<MobilityModel> mob;
-
+      
+  ndn::LinkControlHelper::UpLink(this->GetNode(), routers[m_position.x]);
+/*
   for (uint32_t i = 0; i < routers.size(); i++) {
     Ptr<Node> currentRouter = routers[i];
 
@@ -1062,10 +1283,11 @@ MobileUser::Session(Ptr<const MobilityModel> model)
       ndn::LinkControlHelper::UpLink(this->GetNode(), currentRouter);
     }
   }
-  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " started session at router " << pos.x);
+*/
+  NS_LOG_DEBUG("Node " << GetNode()->GetId() << " started session at router " << m_position.x);
 
-  AnnounceContent();
-
+  AnnounceContent(); 
+  
   if (m_movingInterest)
   {
     Simulator::ScheduleNow(&MobileUser::ScheduleNextInterestPacket, this, false);
@@ -1102,8 +1324,21 @@ MobileUser::CourseChange(Ptr<const MobilityModel> model)
     m_movingPublish = false;
     m_movingPush = false;
   }
+
   ndn::GlobalRoutingHelper::CalculateRoutes();
   ndn::GlobalRoutingHelper::PrintFIBs();
+}
+
+
+/**
+ * @brief Constructor for UserInformation
+ */
+
+UserInformation::UserInformation(uint32_t nodeId, uint32_t availability, bool interested)
+{
+  m_nodeId = nodeId;
+  m_availability = availability;
+  m_interested = interested;
 }
 
 } // namespace ndn

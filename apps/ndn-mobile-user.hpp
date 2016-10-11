@@ -47,6 +47,31 @@ const time::milliseconds DEFAULT_VICINITY_TIMER = time::milliseconds(30000); // 
 
 const uint32_t DEFAULT_REPLICATION_DEGREE = 1; // 1 replica
 
+/** 
+ * @brief A wrap used by the device ranking mechanism containing the relevant User information.
+ */
+
+class UserInformation {
+public:
+  // Constructor
+  UserInformation(uint32_t, uint32_t, bool);
+
+  // Geters
+  uint32_t
+  GetNodeId() { return m_nodeId; }
+
+  uint32_t
+  GetAvailability() { return m_availability; }
+
+  bool
+  GetInterested() { return m_interested; }
+  
+private:
+  uint32_t m_nodeId;
+  uint32_t m_availability;
+  bool m_interested;
+};
+
 /**
  * @ingroup ndn-apps
  * @brief A mobile consumer that requests multiple objects with varied number of chunks.
@@ -80,22 +105,22 @@ public:
   OnData(shared_ptr<const Data> contentObject);
 
   virtual void
-  respondVicinityData(shared_ptr<const Data> contentObject);
+  RespondVicinityData(shared_ptr<const Data> contentObject);
 
   virtual void
-  respondData(shared_ptr<const Data> contentObject);
+  RespondData(shared_ptr<const Data> contentObject);
 
   virtual void
   OnInterest(shared_ptr<const Interest> interest);
 
   virtual void
-  respondHint(shared_ptr<const Interest> interest);
+  RespondHint(shared_ptr<const Interest> interest);
+
+  virtual uint32_t
+  RespondVicinity(shared_ptr<const Interest> interest);
 
   virtual void
-  respondVicinity(shared_ptr<const Interest> interest);
-
-  virtual void
-  respondInterest(shared_ptr<const Interest> interest);
+  RespondInterest(shared_ptr<const Interest> interest);
 
   virtual void
   OnTimeout(Name objectName);
@@ -124,7 +149,10 @@ public:
   AnnounceContent();
 
   virtual void
-  AnnounceContent(Name object);
+  AnnounceContent(Name object, bool update);
+
+  virtual void
+  UnannounceContent(Name object);
 
   // Producer
 //  virtual void
@@ -144,13 +172,16 @@ public:
 
   // Strategy
   virtual void
-  DiscoverVicinity(Name object);
+  ProbeVicinity(Name object);
+
+  virtual void
+  SortVicinity();
 
   virtual void
   PushContent(Name objectName);
 
   virtual int
-  SelectDevice();
+  SelectRandomDevice();
 
   virtual void
   HintContent(int deviceID, Name object);
@@ -164,6 +195,18 @@ public:
 
   void
   CourseChange(Ptr<const MobilityModel> model);
+
+  uint32_t
+  GetAvailability()
+  {
+    return m_userAvailability;
+  }
+
+  uint32_t
+  GetInterested()
+  {
+    return m_userInterested;
+  }
 
 protected:
 
@@ -219,11 +262,23 @@ private:
   Ptr<UniformRandomVariable> m_rand;
 
   //Pushing strategy data structures
-  vector<int> m_vicinity;
+  vector<UserInformation> m_vicinity;
   Time m_vicinityTimer;
   Time m_hintTimer;
   uint32_t m_vicinitySize;
   uint32_t m_replicationDegree;
+
+  // Content Placement Policies structures
+  // THIS IS A TEMPORARY SOLUTION
+  int32_t m_userAvailability;
+  string m_probingModel;
+  bool m_userInterested;
+  bool m_hintProbing;
+
+  // Vicinity Probing Thresholds 
+  // THIS IS A TEMPORARY SOLUTION
+  int32_t m_availabilityThreshold;
+  bool m_interestedThreshold;
 
   // Structures for retransmission 
   map<Name, Time> m_nameTimeouts;
@@ -241,6 +296,7 @@ private:
 
   // Mobility
   bool m_moving;
+  Vector m_position;
 
 };
 

@@ -88,6 +88,9 @@ public:
   void
   AddLocalPrefix(shared_ptr<Name> prefix);
 
+  void
+  RemoveLocalPrefix(shared_ptr<Name> prefix);
+
   /**
    * @brief Add edge to the node
    * @param face Face of the edge

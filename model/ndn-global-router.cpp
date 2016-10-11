@@ -72,6 +72,12 @@ GlobalRouter::AddLocalPrefix(shared_ptr<Name> prefix)
 }
 
 void
+GlobalRouter::RemoveLocalPrefix(shared_ptr<Name> prefix)
+{
+  m_localPrefixes.remove(prefix);
+}
+
+void
 GlobalRouter::AddIncidency(shared_ptr<Face> face, Ptr<GlobalRouter> gr)
 {
   m_incidencies.push_back(std::make_tuple(this, face, gr));

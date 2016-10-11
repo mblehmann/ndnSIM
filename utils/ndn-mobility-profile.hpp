@@ -159,7 +159,7 @@ public:
   }
 
   Ptr<RandomVariableStream>
-  GetSesssion() {
+  GetSession() {
     return session;
   }
 
