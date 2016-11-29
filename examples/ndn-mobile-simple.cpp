@@ -33,7 +33,6 @@
 #include <ns3/ndnSIM/utils/ndn-profile-container.hpp>
 
 #include "ns3/ndnSIM/utils/ndn-mobility-profile.hpp"
-#include "ns3/ndnSIM/helper/ndn-profile-container.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -85,12 +84,13 @@ main(int argc, char* argv[])
   string topology;
   string data_rate;
   string delay;
-  uint32_t max_packets;
   uint32_t catalog_size;
   uint32_t max_consumers;
   double popularity_alpha;
   double size_mean;
   double size_stddev;
+  double availability_mean;
+  double availability_stddev;
 //  double lifetime_mean;
 //  double lifetime_stddev;
   uint32_t cache_size;
@@ -105,16 +105,13 @@ main(int argc, char* argv[])
   cmd.AddValue("input", "InputFile", inputfile);
   cmd.Parse(argc, argv);
 
-  ifstream infile(inputfile + ".in");
+  ifstream infile(inputfile);
   
   while(!infile.eof())
   {
     infile >> parameter;
     if(parameter == "simulation_time")
-    {
       infile >> simulation_time;
-      cout << simulation_time << endl;
-    }
     else if(parameter == "seed")
       infile >> seed;
     else if(parameter == "run")
@@ -141,6 +138,10 @@ main(int argc, char* argv[])
       infile >> size_mean;
     else if(parameter == "size_stddev")
       infile >> size_stddev;
+    else if(parameter == "availability_mean")
+      infile >> availability_mean;
+    else if(parameter == "availability_stddev")
+      infile >> availability_stddev;
     else if(parameter == "cache_size")
       infile >> cache_size;
     else if(parameter == "window_size")
@@ -151,14 +152,12 @@ main(int argc, char* argv[])
       infile >> min_publish_time;
     else if(parameter == "max_publish_time")
       infile >> max_publish_time;
-    else if(parameter == "max_packets")
-      infile >> max_packets;
     else if(parameter == "profiles_file")
       infile >> profiles;
   }
 
   ns3::ndn::MobilityProfileContainer userProfiles = ns3::ndn::MobilityProfileContainer();
-  ifstream profile_input("/home/lleal/scripts-ndnSIM/" + profiles);
+  ifstream profile_input(profiles);
   
   while(!profile_input.eof()) {
     profile_input >> parameter;
@@ -174,48 +173,48 @@ main(int argc, char* argv[])
       
       else if(parameter == "movement_distribution") {
         profile_input >> s_movement;
-        if (!s_movement.compare("Uniform")) {
+        if (s_movement == "Uniform") {
           Time movement_min;
           Time movement_max;
           profile_input >> parameter >> movement_min;
           profile_input >> parameter >> movement_max;
-          Ptr<RandomVariableStream> Movement = mobility_profile->GetSession();
-          Movement = CreateObject<UniformRandomVariable>();
-          Movement->SetAttribute("Min", DoubleValue(movement_min.GetMinutes()));
-          Movement->SetAttribute("Max", DoubleValue(movement_max.GetMinutes()));
+          Ptr<RandomVariableStream> movement = CreateObject<UniformRandomVariable>();
+          movement->SetAttribute("Min", DoubleValue(movement_min.GetMinutes()));
+          movement->SetAttribute("Max", DoubleValue(movement_max.GetMinutes()));
+          mobility_profile->SetMovementDistribution(movement);
         }
         
-        else if (!s_movement.compare("Constant")) {
+        else if (s_movement == "Constant") {
           Time movement_constant;
           profile_input >> parameter >> movement_constant;
-          Ptr<RandomVariableStream> Movement = mobility_profile->GetSession();
-          Movement = CreateObject<ConstantRandomVariable>();
-          Movement->SetAttribute("Constant", DoubleValue(movement_constant.GetMinutes()));
+          Ptr<RandomVariableStream> movement = CreateObject<ConstantRandomVariable>();
+          movement->SetAttribute("Constant", DoubleValue(movement_constant.GetMinutes()));
+          mobility_profile->SetMovementDistribution(movement);
         }
       }
       
       else if(parameter == "session_distribution") {
         profile_input >> s_session;
-        if (!s_session.compare("Pareto")) {
+        if (s_session == "Pareto") {
           double session_mean;
           double session_shape;
           double session_bound;
           profile_input >> parameter >> session_mean;
           profile_input >> parameter >> session_shape;
           profile_input >> parameter >> session_bound;
-          Ptr<RandomVariableStream> Session = mobility_profile->GetSession();
-          Session = CreateObject<UniformRandomVariable>();
-          Session->SetAttribute("Mean", DoubleValue(session_mean));
-          Session->SetAttribute("Shape", DoubleValue(session_shape));
-          Session->SetAttribute("Bound", DoubleValue(session_bound));
+          Ptr<RandomVariableStream> session = CreateObject<ParetoRandomVariable>();
+          session->SetAttribute("Mean", DoubleValue(session_mean));
+          session->SetAttribute("Shape", DoubleValue(session_shape));
+          session->SetAttribute("Bound", DoubleValue(session_bound));
+          mobility_profile->SetSessionDistribution(session);
         }
         
-        else if (!s_session.compare("Constant")) {
+        else if (s_session == "Constant") {
           Time session_constant;
           profile_input >> parameter >> session_constant;
-          Ptr<RandomVariableStream> Session = mobility_profile->GetSession();
-          Session = CreateObject<ConstantRandomVariable>();
-          Session->SetAttribute("Constant", DoubleValue(session_constant.GetMinutes()));
+          Ptr<RandomVariableStream> session = CreateObject<ConstantRandomVariable>();
+          session->SetAttribute("Constant", DoubleValue(session_constant.GetMinutes()));
+          mobility_profile->SetSessionDistribution(session);
         }
       }
       
@@ -234,7 +233,7 @@ main(int argc, char* argv[])
   RngSeedManager::SetRun(run);  
 
   AnnotatedTopologyReader topologyReader("", 1);
-  topologyReader.SetFileName("/home/lleal/scripts-ndnSIM/" + topology);
+  topologyReader.SetFileName(topology);
   topologyReader.Read();
 
   cout << "Creating nodes" << endl;
@@ -284,8 +283,8 @@ main(int argc, char* argv[])
 
   cout << "Choosing forwarding strategy" << endl;
   // Choosing forwarding strategy
-  for (uint32_t i = 0; i < n_users; i++) {
-    string prefix = "/prod" + to_string(i);
+  for (uint32_t i = 0; i < catalog_size; i++) {
+    string prefix = "/producer" + to_string(userNodes.Get(i)->GetId() + i);
     ndn::StrategyChoiceHelper::InstallAll(prefix, "/localhost/nfd/strategy/best-route");
   }
   ndn::StrategyChoiceHelper::InstallAll("/hint", "/localhost/nfd/strategy/multicast");
@@ -308,6 +307,7 @@ main(int argc, char* argv[])
   catalog->setPopularity(popularity_alpha, max_consumers);
   catalog->setObjectPopularityVariation(0);
   catalog->setObjectSize(size_mean, size_stddev);
+  catalog->setObjectAvailability(availability_mean, availability_stddev);
 //  catalog->setObjectLifetime(lifetime_mean, lifetime_stddev);
   catalog->initializeCatalog();
   
@@ -320,18 +320,15 @@ main(int argc, char* argv[])
     Time publishTime = Minutes(initialization->GetValue(min_publish_time.GetMinutes(), max_publish_time.GetMinutes()));
 
     ndn::AppHelper consumerHelper("ns3::ndn::MobileUser");
-    consumerHelper.SetPrefix("/prod" + to_string(i));
-    consumerHelper.SetAttribute("Postfix", StringValue("/obj"));
-    consumerHelper.SetAttribute("InitialWindowSize", UintegerValue(window_size));
-    consumerHelper.SetAttribute("PayloadSize", UintegerValue(payload_size));
+    consumerHelper.SetAttribute("WindowSize", UintegerValue(window_size));
     if (producers < catalog_size)
     {
-      consumerHelper.SetAttribute("PublishTime", StringValue(to_string(publishTime.ToDouble(Time::MIN)) + "min"));
+      consumerHelper.SetAttribute("ProduceTime", StringValue(to_string(publishTime.ToDouble(Time::MIN)) + "min"));
       producers++;
     }
     consumerHelper.SetAttribute("VicinitySize", UintegerValue(vicinity_size));
-    consumerHelper.SetAttribute("ReplicationDegree", UintegerValue(replication_degree));
     consumerHelper.SetAttribute("CacheSize", UintegerValue(cache_size));
+    consumerHelper.SetAttribute("PlacementPolicy", UintegerValue(0));
     consumerHelper.SetAttribute("Catalog", PointerValue(catalog));
     consumerHelper.Install(userNodes.Get(i));
   }
@@ -353,9 +350,12 @@ main(int argc, char* argv[])
     //cout << "Initialize positions of nodes" << endl;
     // Initialize positions of nodes
     mobility.SetPositionAllocator(positionAlloc[i]);
-    
+
+    cout << current_profile->GetMovement() << endl;    
+    cout << current_profile->GetSession() << endl;    
+
     mobility.SetMobilityModel("ns3::OnOffMobilityModel",
-                             "Movement", PointerValue(current_profile->GetMovement()),
+                              "Movement", PointerValue(current_profile->GetMovement()),
                               "Session", PointerValue(current_profile->GetSession()),
                               "PositionAllocator", PointerValue(positionAlloc[i]));
 
@@ -366,13 +366,13 @@ main(int argc, char* argv[])
   grHelper.InstallAll();
 
   for (uint32_t i=0; i<catalog_size; i++) {
-      cout << "Adding origin /prod" << to_string(i) << endl;
-      grHelper.AddOrigin("/prod" + to_string(i), userNodes.Get(i));
+      cout << "Adding origin /producer" << to_string(to_string(userNodes.Get(i)->GetId() + i)) << endl;
+      grHelper.AddOrigin("/producer" + to_string(to_string(userNodes.Get(i)->GetId() + i)), userNodes.Get(i));
   }
   
   // Calculate and install FIBs
   ndn::GlobalRoutingHelper::CalculateRoutes();
-  ndn::GlobalRoutingHelper::PrintFIBs();
+//  ndn::GlobalRoutingHelper::PrintFIBs();
 
   Simulator::Stop(simulation_time);
 

@@ -66,9 +66,6 @@ public: // from nfd::Face
   virtual void
   sendData(const Data& data);
 
-//  virtual void
-//  sendAnnouncement(const Announcement& announcement);
-
   /**
    * @brief Send Interest towards NFD
    */
@@ -80,9 +77,6 @@ public: // from nfd::Face
    */
   void
   onReceiveData(const Data& data);
-
-//  void
-//  onReceiveAnnouncement(const Announcement& announcement);
 
   virtual void
   close();

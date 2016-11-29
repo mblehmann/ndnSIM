@@ -50,9 +50,6 @@ Convert::FromPacket<Interest>(Ptr<Packet> packet);
 template std::shared_ptr<const Data>
 Convert::FromPacket<Data>(Ptr<Packet> packet);
 
-//template std::shared_ptr<const Announcement>
-//Convert::FromPacket<Announcement>(Ptr<Packet> packet);
-
 template<class T>
 Ptr<Packet>
 Convert::ToPacket(const T& pkt)
@@ -79,9 +76,6 @@ Convert::ToPacket<Interest>(const Interest& packet);
 template Ptr<Packet>
 Convert::ToPacket<Data>(const Data& packet);
 
-//template Ptr<Packet>
-//Convert::ToPacket<Announcement>(const Announcement& packet);
-
 uint32_t
 Convert::getPacketType(Ptr<const Packet> packet)
 {
@@ -92,7 +86,6 @@ Convert::getPacketType(Ptr<const Packet> packet)
   }
 
   if (type == ::ndn::tlv::Interest || type == ::ndn::tlv::Data) {
-//   || type == ::ndn::tlv::Announcement
     return type;
   }
   else {

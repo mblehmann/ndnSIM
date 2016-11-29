@@ -88,8 +88,10 @@ public:
   void
   AddLocalPrefix(shared_ptr<Name> prefix);
 
+  /* PDRM Change */
   void
   RemoveLocalPrefix(shared_ptr<Name> prefix);
+  /* PDRM Change */
 
   /**
    * @brief Add edge to the node

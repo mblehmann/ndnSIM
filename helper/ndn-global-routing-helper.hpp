@@ -64,8 +64,10 @@ public:
   void
   InstallAll();
 
+  /* PDRM Change */
   void
   RemoveOrigin(const std::string& prefix, Ptr<Node> node);
+  /* PDRM Change */
 
   /**
    * @brief Add `prefix' as origin on `node'
@@ -103,6 +105,11 @@ public:
   static uint32_t
   CalculateRoutes();
 
+  /* PDRM Change */
+  static uint32_t
+  CalculateRoutes(const std::string& prefix);
+  /* PDRM Change */
+
   /**
    * @brief Calculate all possible next-hop independent alternative routes
    *
@@ -114,11 +121,13 @@ public:
   static void
   CalculateAllPossibleRoutes();
 
+  /* PDRM Change */
   static void
   PrintFIBs();
 
   static uint32_t
   GetChanges();
+  /* PDRM Change */
 
 private:
   void

@@ -113,17 +113,6 @@ NetDeviceFace::sendData(const Data& data)
   send(packet);
 }
 
-//void
-//NetDeviceFace::sendAnnouncement(const Announcement& announcement)
-//{
-//  NS_LOG_FUNCTION(this << &announcement);
-//
-//  this->emitSignal(onSendAnnouncement, announcement);
-//
-//  Ptr<Packet> packet = Convert::ToPacket(announcement);
-//  send(packet);
-//}
-
 // callback
 void
 NetDeviceFace::receiveFromNetDevice(Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t protocol,
@@ -139,10 +128,6 @@ NetDeviceFace::receiveFromNetDevice(Ptr<NetDevice> device, Ptr<const Packet> p, 
       shared_ptr<const Interest> i = Convert::FromPacket<Interest>(packet);
       this->emitSignal(onReceiveInterest, *i);
     }
-//    else if (type == ::ndn::tlv::Announcement) {
-//      shared_ptr<const Announcement> a = Convert::FromPacket<Announcement>(packet);
-//      this->emitSignal(onReceiveAnnouncement, *a);
-//    }
     else if (type == ::ndn::tlv::Data) {
       shared_ptr<const Data> d = Convert::FromPacket<Data>(packet);
       this->emitSignal(onReceiveData, *d);

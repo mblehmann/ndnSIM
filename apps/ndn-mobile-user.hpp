@@ -17,6 +17,7 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Matheus Lehmann <mblehmann@inf.ufrgs.br>
+ * @author Lucas Leal <lsleal@inf.ufrgs.br>
  */
 
 #ifndef NDN_MOBILE_USER_H
@@ -36,45 +37,50 @@
 #include <utils/ndn-catalog.hpp>
 
 #include <vector>
-#include <list>
+#include <set>
+#include <queue>
 
 using namespace std;
 
 namespace ns3 {
 namespace ndn {
 
-const time::milliseconds DEFAULT_VICINITY_TIMER = time::milliseconds(30000); // 30 seconds
-
-const uint32_t DEFAULT_REPLICATION_DEGREE = 1; // 1 replica
-
 /** 
  * @brief A wrap used by the device ranking mechanism containing the relevant User information.
+ * Currently, we can store the node ID, location, availability, and interest.
+ * This information is used in a mapping content -> UserInformation
  */
-
 class UserInformation {
 public:
   // Constructor
-  UserInformation(uint32_t, uint32_t, bool);
+  UserInformation(uint32_t, uint32_t, uint32_t, bool);
 
   // Geters
   uint32_t
   GetNodeId() { return m_nodeId; }
 
   uint32_t
+  GetLocation() { return m_location; }
+
+  uint32_t
   GetAvailability() { return m_availability; }
 
   bool
   GetInterested() { return m_interested; }
-  
+
+  bool
+  operator==(const UserInformation& a) { return this->m_nodeId == a.m_nodeId; }
+ 
 private:
   uint32_t m_nodeId;
+  uint32_t m_location;
   uint32_t m_availability;
   bool m_interested;
 };
 
 /**
  * @ingroup ndn-apps
- * @brief A mobile consumer that requests multiple objects with varied number of chunks.
+ * @brief A mobile user that can be a producer, provider, and consumer 
  */
 class MobileUser : public App {
 public:
@@ -84,10 +90,14 @@ public:
   // Constructor
   MobileUser();
 
+  // Finalize data structures and print collected statistics
   void
   EndGame();
 
-  // Retransmission Control
+  /* 
+   * Retransmission Control methods.
+   * It calculates a moving average based on past requests
+   */
   virtual void
   SetRetxTimer(Time retxTimer);
 
@@ -97,116 +107,132 @@ public:
   virtual void
   CheckRetxTimeout();
 
-  void
-  BlockPrinter(const Block& block);
-
-  // Packet/Event Handlers
   virtual void
-  OnData(shared_ptr<const Data> contentObject);
+  OnTimeout(Name objectName);
 
-  virtual void
-  RespondVicinityData(shared_ptr<const Data> contentObject);
-
-  virtual void
-  RespondData(shared_ptr<const Data> contentObject);
-
+  /* 
+   * Packet/Event Handler
+   * There are two main packets: Data and Interest.
+   * A Data packet can be actual Data or Vicinity Data
+   * An Interest packet can be actual Interest, Hint, or Vicinity
+   */
   virtual void
   OnInterest(shared_ptr<const Interest> interest);
-
-  virtual void
-  RespondHint(shared_ptr<const Interest> interest);
-
-  virtual uint32_t
-  RespondVicinity(shared_ptr<const Interest> interest);
 
   virtual void
   RespondInterest(shared_ptr<const Interest> interest);
 
   virtual void
-  OnTimeout(Name objectName);
+  RespondHint(shared_ptr<const Interest> interest);
+
+  virtual void
+  RespondVicinity(shared_ptr<const Interest> interest);
+
+  virtual void
+  OnData(shared_ptr<const Data> contentObject);
+
+  virtual void
+  RespondData(shared_ptr<const Data> contentObject);
+
+  virtual void
+  RespondVicinityData(shared_ptr<const Data> contentObject);
 
 //  virtual void
-//  OnAnnouncement(shared_ptr<const Announcement> announcement);
+//  respondAnnouncement(shared_ptr<const Announcement> announcement);
 
-  // Consumer
+  /*
+   * Consumer actions
+   * A consumer adds interest to an object to signalize it will start downloading
+   * There are three actions for sending interest packets that manage data structures and local cache
+   * Lastly, the consumer concludes a download
+   */
+  virtual void
+  FoundObject(Name objectName);
+
+  virtual void
+  StartObjectDownload(Name objectName);
+
+  virtual void
+  ScheduleNextInterestPacket();
+
   void 
-  SendInterestPacket(bool timeout);
+  SendInterestPacket();
 
   virtual void
   WillSendOutInterest(Name objectName);
 
   virtual void
-  ScheduleNextInterestPacket(bool timeout);
-
-  virtual void
-  AddInterestObject(Name objectName);
-
-  virtual void
   ConcludeObjectDownload(Name objectName);
 
-  // Provider
+  /*
+   * Provider actions
+   * A provider can announce and unannounce a given content
+   * Besides, it manages the cache
+   */
   virtual void
-  AnnounceContent();
-
-  virtual void
-  AnnounceContent(Name object, bool update);
+  AnnounceContent(Name object);
 
   virtual void
   UnannounceContent(Name object);
 
-  // Producer
+  virtual void
+  StoreObject(Name object, uint32_t size);
+
+  virtual void
+  DeleteObject(int32_t amount);
+
+  /*
+   * Producer actions
+   * A producer publishes content and advertise it
+   */
+  virtual void
+  ProduceContent();
+
+  virtual Name
+  PublishContent();
+
 //  virtual void
 //  ExpireContent(Name expiredObject);
 
+  /*
+   * Strategy actions
+   * A user probes, sorts, and selects a device of the vicinity
+   * A user also pushes content to others using a hinting scheme
+   */
   virtual void
-  PublishContent();
+  ReplicateContent(Name object);
 
-  virtual Name
-  CreateContentName();
-
-  virtual void
-  GenerateContent(Name object);
-
-  virtual void
-  AdvertiseContent(Name object);
-
-  // Strategy
   virtual void
   ProbeVicinity(Name object);
 
   virtual void
-  SortVicinity();
-
-  virtual void
   PushContent(Name objectName);
 
-  virtual int
-  SelectRandomDevice();
+  virtual void
+  PushToSelectedDevices(Name objectName);
+
+  virtual void
+  PushToRandomDevices(Name objectName);
+
+  virtual UserInformation
+  SelectBestDevice(uint32_t location, bool include, double availability);
 
   virtual void
   HintContent(int deviceID, Name object);
 
-  // Mobility
+  /*
+   * Mobility actions
+   * A user can start movement or begin a session
+   * The course change notifies a change of state between movement and session
+   */
+  void
+  CourseChange(Ptr<const MobilityModel> model);
+
   virtual void
   Move(Ptr<const MobilityModel> model);
 
   virtual void
   Session(Ptr<const MobilityModel> model);
-
-  void
-  CourseChange(Ptr<const MobilityModel> model);
-
-  uint32_t
-  GetAvailability()
-  {
-    return m_userAvailability;
-  }
-
-  uint32_t
-  GetInterested()
-  {
-    return m_userInterested;
-  }
 
 protected:
 
@@ -217,87 +243,85 @@ protected:
   StopApplication();
 
 private:
-  // Interest sending variables
+  // Sending Interest packets
   EventId m_sendEvent;
-  Time m_retxTimer;
-  EventId m_retxEvent;
+  uint32_t m_windowSize;
+  queue<Name> m_chunkRequestQueue;
+  set<Name> m_pendingChunks;
 
+  // Objects management
+  map<Name, uint32_t> m_downloadedChunks;
+  map<Name, uint32_t> m_objectSizes;
+  set<Name> m_interestingObjects;
+  set<Name> m_requestedObjects;
+  set<Name> m_downloadedObjects;
+
+  // RTT and lifetime
   Ptr<RttEstimator> m_rtt;
   Time m_interestLifeTime;
 
-  // Content producing variables
-  Time m_publishTime;
+  // Produced content
+  Time m_produceTime;
   Name m_prefix;
   Name m_postfix;
   uint32_t m_virtualPayloadSize;
   Time m_freshness;
+  double m_producerPopularity;
+  Name m_lastProducedObject;
+  set<Name> m_producedObjects;
 
+  // Producer ID
   uint32_t m_signature;
   Name m_keyLocator;
 
-  double m_popularity;
+  // Movement
+  bool m_movingRequesting;
+  bool m_movingProducing;
+  bool m_movingReplicating;
+  bool m_moving;
+  Vector m_position;
+  Time m_sessionPeriod;
+  Time m_movementPeriod;
+  Time m_lastMovementEvent;
 
-  // Object requesting data structures
-  vector<Name> m_interestQueue;
-  list<Name> m_pendingObjects;
-  vector<Name> m_retxNames;
-
-  float m_windowSize;
-  uint32_t m_initialWindowSize;
-  uint32_t m_pendingInterests;
-
-  bool m_movingInterest;
-  bool m_movingPublish;
-  bool m_movingPush;
-  Name m_lastObject;
-
-  // Content providing data structures
+  // Providing content
   uint32_t m_cacheSize;
-  vector<Name> m_providedObjects;
-  vector<Name> m_downloadedObjects;
-  vector<Name> m_generatedContent;
+  uint32_t m_usedCache;
+  map<Name, uint32_t> m_providedObjects;
 
-  // Shared global variables
+  // Content catalog and global structures
   Ptr<Catalog> m_catalog;
   Ptr<UniformRandomVariable> m_rand;
 
-  //Pushing strategy data structures
+  // Strategy (vicinity, hint, and replication)
   vector<UserInformation> m_vicinity;
+  vector<UserInformation> m_consumers;
   Time m_vicinityTimer;
   Time m_hintTimer;
   uint32_t m_vicinitySize;
-  uint32_t m_replicationDegree;
 
   // Content Placement Policies structures
-  // THIS IS A TEMPORARY SOLUTION
-  int32_t m_userAvailability;
-  string m_probingModel;
-  bool m_userInterested;
-  bool m_hintProbing;
+  double m_userAvailability;
+  uint32_t m_placementPolicy;
+  uint32_t m_homeNetwork;
 
-  // Vicinity Probing Thresholds 
-  // THIS IS A TEMPORARY SOLUTION
-  int32_t m_availabilityThreshold;
-  bool m_interestedThreshold;
-
-  // Structures for retransmission 
-  map<Name, Time> m_nameTimeouts;
+  // Retransmission
+  Time m_retxTimer;
+  EventId m_retxEvent;
+  queue<Name> m_retxChunksQueue;
+  map<Name, Time> m_chunkTimeouts;
  
-  map<Name, Time> m_nameLastDelay;
-  map<Name, Time> m_nameFullDelay;
-  map<Name, uint32_t> m_nameRetxCounts;
+  map<Name, Time> m_chunkLastDelay;
+  map<Name, Time> m_chunkFullDelay;
+  map<Name, uint32_t> m_chunkRetxCounts;
 
+  map<Name, SequenceNumber32> m_chunkOrder;
+
+  // Tracers
   TracedCallback<Ptr<App>, Name, Time, int32_t> m_lastRetransmittedInterestDataDelay;
   TracedCallback<Ptr<App>, Name, Time, uint32_t, int32_t> m_firstInterestDataDelay;
   TracedCallback<Ptr<App>, Name> m_servedData;
  
-  SequenceNumber32 m_chunksRetrieved;
-  map<Name, SequenceNumber32> m_chunkOrder;
-
-  // Mobility
-  bool m_moving;
-  Vector m_position;
-
 };
 
 } // namespace ndn

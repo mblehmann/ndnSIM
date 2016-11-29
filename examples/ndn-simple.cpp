@@ -26,26 +26,6 @@
 
 namespace ns3 {
 
-/**
- * This scenario simulates a very simple network topology:
- *
- *
- *      +----------+     1Mbps      +--------+     1Mbps      +----------+
- *      | consumer | <------------> | router | <------------> | producer |
- *      +----------+         10ms   +--------+          10ms  +----------+
- *
- *
- * Consumer requests data from producer with frequency 10 interests per second
- * (interests contain constantly increasing sequence number).
- *
- * For every received interest, producer replies with a data packet, containing
- * 1024 bytes of virtual payload.
- *
- * To run scenario and see what is happening, use the following command:
- *
- *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple
- */
-
 int
 main(int argc, char* argv[])
 {
@@ -81,7 +61,7 @@ main(int argc, char* argv[])
   ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
   consumerHelper.SetPrefix("/prefix");
-  consumerHelper.SetAttribute("Frequency", StringValue("1")); // 10 interests a second
+  consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
   consumerHelper.Install(nodes.Get(0));                        // first node
 
   // Producer
@@ -91,7 +71,7 @@ main(int argc, char* argv[])
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.Install(nodes.Get(2)); // last node
 
-  Simulator::Stop(Seconds(10.0));
+  Simulator::Stop(Seconds(20.0));
 
   Simulator::Run();
   Simulator::Destroy();
@@ -106,3 +86,4 @@ main(int argc, char* argv[])
 {
   return ns3::main(argc, argv);
 }
+

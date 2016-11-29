@@ -62,9 +62,6 @@ public: // from nfd::Face
   virtual void
   sendData(const Data& data);
 
-//  virtual void
-//  sendAnnouncement(const Announcement& announcement);
-
   virtual void
   close();
 

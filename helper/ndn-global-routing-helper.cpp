@@ -181,6 +181,7 @@ GlobalRoutingHelper::InstallAll()
   Install(NodeContainer::GetGlobal());
 }
 
+/* PDRM Change */
 void
 GlobalRoutingHelper::RemoveOrigin(const std::string& prefix, Ptr<Node> node)
 {
@@ -189,7 +190,12 @@ GlobalRoutingHelper::RemoveOrigin(const std::string& prefix, Ptr<Node> node)
 
   auto name = make_shared<Name>(prefix);
   gr->RemoveLocalPrefix(name);
+
+  for (NodeList::Iterator node = NodeList::Begin(); node != NodeList::End(); node++) {
+    FibHelper::RemoveRoutes(*node, prefix);
+  }
 }
+/* PDRM Change */
 
 void
 GlobalRoutingHelper::AddOrigin(const std::string& prefix, Ptr<Node> node)
@@ -256,6 +262,9 @@ GlobalRoutingHelper::CalculateRoutes()
       NS_LOG_DEBUG("Node " << (*node)->GetId() << " does not export GlobalRouter interface");
       continue;
     }
+    for (auto& pr : source->GetLocalPrefixes())
+      NS_LOG_DEBUG(*pr);
+    
 
     boost::DistancesMap distances;
 
@@ -278,6 +287,104 @@ GlobalRoutingHelper::CalculateRoutes()
       NS_LOG_DEBUG("FACE METRIC: " << nfdFace->getId() << "(" << nfdFace->getMetric() << ")");
       // value std::numeric_limits<uint16_t>::max () MUST NOT be used (reserved)
     }
+
+    NS_LOG_DEBUG("Reachability from Node: " << source->GetObject<Node>()->GetId());
+    for (const auto& dist : distances) {
+      if (dist.first == source)
+        continue;
+      else {
+        // cout << "  Node " << dist.first->GetObject<Node> ()->GetId ();
+        if (std::get<0>(dist.second) == 0) {
+          // cout << " is unreachable" << endl;
+        }
+        else {
+          for (const auto& prefix : dist.first->GetLocalPrefixes()) {
+            //NS_LOG_DEBUG(" prefix " << prefix << " reachable via face " << *std::get<0>(dist.second)
+            //             << " with distance " << std::get<1>(dist.second) << " with delay "
+            //             << std::get<2>(dist.second));
+
+            //shared_ptr<fib::Entry> fibEntry = forwarder->getFib().findLongestPrefixMatch(*prefix);
+            /* PDRM Change */
+            if (prefix->toUri() == "/prod")
+            {
+            for (const auto& nexthops : forwarder->getFib().findLongestPrefixMatch(*prefix)->getNextHops()) {
+              shared_ptr<Face> face = std::get<0>(dist.second);
+              if (nexthops.getFace()->getId() != face->getId()) {
+                NS_LOG_DEBUG("Change for " << *prefix << ": " << nexthops.getFace()->getId() << " == " << face->getId());
+                changes++;
+              }
+            }
+            }
+            /* PDRM Change */
+
+//	    FibHelper::RemoveRoutes(*node, *prefix);
+          }
+
+          for (const auto& prefix : dist.first->GetLocalPrefixes()) {
+            NS_LOG_DEBUG(*node << " " << *prefix << " " << std::get<0>(dist.second) << " " << std::get<1>(dist.second));
+            FibHelper::AddRoute(*node, *prefix, std::get<0>(dist.second),
+                                std::get<1>(dist.second));
+          }
+        }
+      }
+    }
+  }
+  /* PDRM Change */
+  NS_LOG_DEBUG("Total changes: " << changes);
+  return changes;
+  /* PDRM Change */
+}
+
+/* PDRM Change */
+uint32_t
+GlobalRoutingHelper::CalculateRoutes(const std::string& prefix)
+{
+  /**
+   * Implementation of route calculation is heavily based on Boost Graph Library
+   * See http://www.boost.org/doc/libs/1_49_0/libs/graph/doc/table_of_contents.html for more details
+   */
+  uint32_t changes = 0;
+
+  BOOST_CONCEPT_ASSERT((boost::VertexListGraphConcept<boost::NdnGlobalRouterGraph>));
+  BOOST_CONCEPT_ASSERT((boost::IncidenceGraphConcept<boost::NdnGlobalRouterGraph>));
+
+  boost::NdnGlobalRouterGraph graph;
+  // typedef graph_traits < NdnGlobalRouterGraph >::vertex_descriptor vertex_descriptor;
+
+  // For now we doing Dijkstra for every node.  Can be replaced with Bellman-Ford or Floyd-Warshall.
+  // Other algorithms should be faster, but they need additional EdgeListGraph concept provided by
+  // the graph, which
+  // is not obviously how implement in an efficient manner
+  for (NodeList::Iterator node = NodeList::Begin(); node != NodeList::End(); node++) {
+    Ptr<GlobalRouter> source = (*node)->GetObject<GlobalRouter>();
+    if (source == 0) {
+      NS_LOG_DEBUG("Node " << (*node)->GetId() << " does not export GlobalRouter interface");
+      continue;
+    }
+
+    boost::DistancesMap distances;
+
+    dijkstra_shortest_paths(graph, source,
+                            // predecessor_map (boost::ref(predecessors))
+                            // .
+                            distance_map(boost::ref(distances))
+                              .distance_inf(boost::WeightInf)
+                              .distance_zero(boost::WeightZero)
+                              .distance_compare(boost::WeightCompare())
+                              .distance_combine(boost::WeightCombine()));
+
+    // NS_LOG_DEBUG (predecessors.size () << ", " << distances.size ());
+
+    Ptr<L3Protocol> L3protocol = (*node)->GetObject<L3Protocol>();
+    shared_ptr<nfd::Forwarder> forwarder = L3protocol->getForwarder();
+
+/*
+    for (auto& i : L3protocol->getForwarder()->getFaceTable()) {
+      shared_ptr<Face> nfdFace = std::dynamic_pointer_cast<Face>(i);
+      NS_LOG_DEBUG("FACE METRIC: " << nfdFace->getId() << "(" << nfdFace->getMetric() << ")");
+      // value std::numeric_limits<uint16_t>::max () MUST NOT be used (reserved)
+    }
+*/
 
     NS_LOG_DEBUG("Reachability from Node: " << source->GetObject<Node>()->GetId());
     for (const auto& dist : distances) {
@@ -320,6 +427,7 @@ GlobalRoutingHelper::CalculateRoutes()
   NS_LOG_DEBUG("Total changes: " << changes);
   return changes;
 }
+/* PDRM Change */
 
 void
 GlobalRoutingHelper::CalculateAllPossibleRoutes()
@@ -428,6 +536,7 @@ GlobalRoutingHelper::CalculateAllPossibleRoutes()
   }
 }
 
+/* PDRM Change */
 void
 GlobalRoutingHelper::PrintFIBs()
 {
@@ -444,6 +553,7 @@ GlobalRoutingHelper::PrintFIBs()
    }
    }
 }
+/* PDRM Change */
 
 } // namespace ndn
 } // namespace ns3

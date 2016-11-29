@@ -1,0 +1,22 @@
+seed	100
+run	1
+scenario	0
+topology	binary-tree.txt
+time	100
+producers	1
+catalog_prefix	/catalog
+producer_prefix	/producer
+object_prefix	/object
+object_size	1000
+catalog_size	100
+cache_size	0.01
+catalog_alpha	0.8
+download_rate	2Mbps
+frequency_rate	10ms
+chunk_size	1024
+object_requests	100
+lifetime	2s
+storage_size	3
+freshness	0s
+
+

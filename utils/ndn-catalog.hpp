@@ -39,6 +39,7 @@ using ::ndn::Name;
 struct objectProperties {
   double popularity;
   uint32_t size;
+  double availability;
 //  double lifetime;
 };
 
@@ -60,6 +61,9 @@ public:
   vector<Ptr<Node>>
   getRouters();
 
+  Name
+  getObject();
+
   Time
   getMaxSimulationTime();
 
@@ -80,6 +84,9 @@ public:
 
   void 
   setObjectSize(double mean, double stddev);
+
+  void 
+  setObjectAvailability(double mean, double stddev);
 
 //  void
 //  setObjectLifetime(double mean, double stddev);
@@ -106,6 +113,9 @@ private:
   void
   initializeObjectSize();
 
+  void
+  initializeObjectAvailability();
+
 //  void
 //  initializeObjectLifetime();
 
@@ -121,6 +131,9 @@ private:
   uint32_t
   getNextObjectSize();
 
+  double
+  getNextObjectAvailability();
+
 //  double
 //  getNextObjectLifetime();
 
@@ -132,6 +145,7 @@ private:
 
   Ptr<NormalRandomVariable> m_objectPopularity;
   Ptr<NormalRandomVariable> m_objectSize;
+  Ptr<NormalRandomVariable> m_objectAvailability;
 //  Ptr<NormalRandomVariable> m_objectLifetime;
 
   Time m_maxSimulationTime;
@@ -144,6 +158,9 @@ private:
 
   double m_objectSizeMean;
   double m_objectSizeStddev;
+
+  double m_objectAvailabilityMean;
+  double m_objectAvailabilityStddev;
 
 //  double m_objectLifetimeMean;
 //  double m_objectLifetimeStddev;

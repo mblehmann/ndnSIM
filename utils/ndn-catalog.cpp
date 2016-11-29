@@ -69,6 +69,13 @@ vector<Ptr<Node>> Catalog::getRouters()
   return m_routers;
 }
 
+Name
+Catalog::getObject()
+{
+  Name object = NULL;
+  return object;
+}
+
 Time
 Catalog::getMaxSimulationTime()
 {
@@ -113,6 +120,13 @@ Catalog::setObjectSize(double mean, double stddev)
   m_objectSizeStddev = stddev;
 }
 
+void
+Catalog::setObjectAvailability(double mean, double stddev)
+{
+  m_objectAvailabilityMean = mean;
+  m_objectAvailabilityStddev = stddev;
+}
+
 //void
 //Catalog::setObjectLifetime(double mean, double stddev)
 //{
@@ -125,6 +139,7 @@ Catalog::initializeCatalog()
 {
   initializePopularity();
   initializeObjectSize();
+  initializeObjectAvailability();
 //  initializeObjectLifetime();
 }
 
@@ -146,6 +161,14 @@ Catalog::initializeObjectSize()
   m_objectSize = CreateObject<NormalRandomVariable>();
   m_objectSize->SetAttribute("Mean", DoubleValue(m_objectSizeMean));
   m_objectSize->SetAttribute("Variance", DoubleValue(m_objectSizeStddev));
+}
+
+void
+Catalog::initializeObjectAvailability()
+{
+  m_objectAvailability = CreateObject<NormalRandomVariable>();
+  m_objectAvailability->SetAttribute("Mean", DoubleValue(m_objectAvailabilityMean));
+  m_objectAvailability->SetAttribute("Variance", DoubleValue(m_objectAvailabilityStddev));
 }
 
 //void
@@ -202,6 +225,12 @@ Catalog::getNextObjectSize()
   return round(m_objectSize->GetValue());
 }
 
+double
+Catalog::getNextObjectAvailability()
+{
+  return m_objectAvailability->GetValue();
+}
+
 //double
 //Catalog::getNextObjectLifetime()
 //{
@@ -215,6 +244,7 @@ Catalog::addObject(Name objectName, double popularity)
 
   properties.popularity = getNextObjectPopularity(popularity);
   properties.size = getNextObjectSize();
+  properties.availability = getNextObjectAvailability();
 //  properties.lifetime = getNextObjectLifetime();
 
   m_objects[objectName] = properties;

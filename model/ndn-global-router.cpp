@@ -71,11 +71,28 @@ GlobalRouter::AddLocalPrefix(shared_ptr<Name> prefix)
   m_localPrefixes.push_back(prefix);
 }
 
+/* PDRM Change */
 void
 GlobalRouter::RemoveLocalPrefix(shared_ptr<Name> prefix)
 {
-  m_localPrefixes.remove(prefix);
+/*
+  std::cout << m_localPrefixes.size() << std::endl;
+  for (std::list<shared_ptr<Name> >::iterator it = m_localPrefixes.begin(); it != m_localPrefixes.end(); ++it) {
+    std::cout << prefix->toUri() << " " << (*it)->toUri() << std::endl;
+    if (prefix->toUri() == (*it)->toUri())
+      m_localPrefixes.erase(it);
+  }
+  std::cout << m_localPrefixes.size() << std::endl;
+*/
+  for (auto &entry : m_localPrefixes) {
+    if (prefix->toUri() == entry->toUri()) {
+      m_localPrefixes.remove(entry);
+      return;
+    }
+  }
+    
 }
+/* PDRM Change */
 
 void
 GlobalRouter::AddIncidency(shared_ptr<Face> face, Ptr<GlobalRouter> gr)

@@ -36,52 +36,17 @@ MobilityProfile::MobilityProfile() = default;
 // mutators
 void
 MobilityProfile::SetNumberAp(uint32_t nap) {
-  numberAP = nap;
+  m_numberAP = nap;
 }
 
 void
-MobilityProfile::SetMovementDistribution (string movement_dist ) {
-  movement_distribution = movement_dist;
+MobilityProfile::SetMovementDistribution (Ptr<RandomVariableStream> movement) {
+  m_movement = movement;
 }
 
 void
-MobilityProfile::SetMovementMin(Time mov_min) {
-  movement_min = mov_min;
-}
-
-void
-MobilityProfile::SetMovementMax(Time mov_max) {
-  movement_max = mov_max;
-}
-
-void
-MobilityProfile::SetMovementConstant(Time mov_const) {
-  movement_constant = mov_const;
-}
-
-void
-MobilityProfile::SetSessionDistribution(string sess_dist) {
-  session_distribution = sess_dist;
-}
-
-void
-MobilityProfile::SetSessionMean(double mean) {
-  session_mean = mean;
-}
-
-void
-MobilityProfile::SetSessionShape(double shape) {
-  session_shape = shape;
-}
-
-void
-MobilityProfile::SetSessionBound(double bound) {
-  session_bound = bound;
-}
-
-void
-MobilityProfile::SetSessionConstant(Time ses_const) {
-  session_constant = ses_const;
+MobilityProfile::SetSessionDistribution(Ptr<RandomVariableStream> session) {
+  m_session = session;
 }
 
 /* MobilityProfileContainer */

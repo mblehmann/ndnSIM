@@ -48,22 +48,13 @@ namespace ndn {
 class MobilityProfile {
 private:
   /* number of AP the user will travel through */
-  uint32_t numberAP;
+  uint32_t m_numberAP;
 
   /* parameters related to user movement */
-  string movement_distribution;
-  Time movement_min;
-  Time movement_max;
-  Time movement_constant;
-  Ptr<RandomVariableStream> movement;
+  Ptr<RandomVariableStream> m_movement;
 
   /* paramenters related to user sessions */
-  string session_distribution;
-  double session_mean;
-  double session_shape;
-  double session_bound;
-  Time session_constant; 
-  Ptr<RandomVariableStream> session; 
+  Ptr<RandomVariableStream> m_session; 
  
 public:
   /**
@@ -73,94 +64,28 @@ public:
 
   // mutators
   void
-  SetNumberAp(uint32_t);
+  SetNumberAp(uint32_t numberAP);
 
   void
-  SetMovementDistribution (string);
+  SetMovementDistribution (Ptr<RandomVariableStream> movement);
 
   void
-  SetMovementMin(Time);
-
-  void
-  SetMovementMax(Time);
-  
-  void
-  SetMovementConstant(Time );
-  
-  void
-  SetSessionDistribution(string );
-  
-  void
-  SetSessionMean(double );
-  
-  void
-  SetSessionShape(double );
-  
-  void
-  SetSessionBound(double );
-  
-  void
-  SetSessionConstant(Time);
+  SetSessionDistribution(Ptr<RandomVariableStream> session);
   
   // accessors
   uint32_t
   GetNumberAp() {
-    return numberAP; 
-  }
-  
-  string
-  GetMovementDistribution() {
-    return movement_distribution; 
-  }
-
-  Time
-  GetMovementMin() {
-    return movement_min; 
-  }
-
-  Time
-  GetMovementMax() {
-    return movement_max; 
-  }
-  
-  Time
-  GetMovementConstant() {
-    return movement_constant; 
+    return m_numberAP; 
   }
   
   Ptr<RandomVariableStream>
   GetMovement() {
-    return movement;
+    return m_movement;
   }
   
-  string
-  GetSessionDistribution() {
-    return session_distribution; 
-  }
-  
-  double
-  GetSessionMean() {
-    return session_mean; 
-  }
-  
-  double
-  GetSessionShape() {
-    return session_shape; 
-  }
-  
-  double
-  GetSessionBound() {
-    return session_bound; 
-  }
-  
-  Time
-  GetSessionConstant() {
-    return session_constant; 
-  }
-
   Ptr<RandomVariableStream>
   GetSession() {
-    return session;
+    return m_session;
   }
 
 };

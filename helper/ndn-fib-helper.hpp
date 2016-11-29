@@ -101,8 +101,10 @@ public:
   AddRoute(const std::string& nodeName, const Name& prefix, const std::string& otherNodeName,
            int32_t metric);
 
+  /* PDRM Change */
   static void
   RemoveRoutes(Ptr<Node> node, const Name& prefix);
+  /* PDRM Change */
 
   /**
    * \brief remove forwarding entry in FIB

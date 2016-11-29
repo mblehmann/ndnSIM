@@ -64,9 +64,9 @@ using ::ndn::Signature;
 using ::ndn::SignatureInfo;
 using ::ndn::Block;
 using ::ndn::KeyChain;
-using ::ndn::StrategySelectors;
-
-//using ::ndn::Announcement;
+/* PDRM Change */
+using ::ndn::PDRMStrategySelectors;
+/* PDRM Change */
 
 #ifndef DOXYGEN
 // For python bindings

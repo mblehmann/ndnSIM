@@ -75,17 +75,6 @@ AppFace::sendData(const Data& data)
   Simulator::ScheduleNow(&App::OnData, m_app, data.shared_from_this());
 }
 
-//void
-//AppFace::sendAnnouncement(const Announcement& announcement)
-//{
-//  NS_LOG_FUNCTION(this << &announcement);
-//
-//  this->emitSignal(onSendAnnouncement, announcement);
-//
-//  // to decouple callbacks
-//  Simulator::ScheduleNow(&App::OnAnnouncement, m_app, announcement.shared_from_this());
-//}
-
 void
 AppFace::onReceiveInterest(const Interest& interest)
 {
@@ -101,13 +90,6 @@ AppFace::onReceiveData(const Data& data)
   NS_LOG_INFO("Receiving data " << data.getName());
   this->emitSignal(onReceiveData, data);
 }
-
-//void
-//AppFace::onReceiveAnnouncement(const Announcement& announcement)
-//{
-//  NS_LOG_FUNCTION(this << &announcement);
-//  this->emitSignal(onReceiveAnnouncement, announcement);
-//}
 
 } // namespace ndn
 } // namespace ns3

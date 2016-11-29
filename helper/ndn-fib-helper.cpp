@@ -113,8 +113,6 @@ FibHelper::AddRoute(Ptr<Node> node, const Name& prefix, uint32_t faceId, int32_t
   NS_ASSERT_MSG(face != 0, "Face with ID [" << faceId << "] does not exist on node ["
                                             << node->GetId() << "]");
 
-  NS_LOG_DEBUG("A");
-
   AddRoute(node, prefix, face, metric);
 }
 
@@ -132,7 +130,6 @@ FibHelper::AddRoute(const std::string& nodeName, const Name& prefix, uint32_t fa
   NS_ASSERT_MSG(face != 0, "Face with ID [" << faceId << "] does not exist on node [" << nodeName
                                             << "]");
 
-  NS_LOG_DEBUG("B");
   AddRoute(node, prefix, face, metric);
 }
 
@@ -158,7 +155,6 @@ FibHelper::AddRoute(Ptr<Node> node, const Name& prefix, Ptr<Node> otherNode, int
       NS_ASSERT_MSG(face != 0, "There is no face associated with the p2p link");
 
       AddRoute(node, prefix, face, metric);
-      NS_LOG_DEBUG("C");
 
       return;
     }
@@ -177,11 +173,11 @@ FibHelper::AddRoute(const std::string& nodeName, const Name& prefix,
 
   Ptr<Node> otherNode = Names::Find<Node>(otherNodeName);
   NS_ASSERT_MSG(otherNode != 0, "Node [" << otherNodeName << "] does not exist");
-  NS_LOG_DEBUG("D");
 
   AddRoute(node, prefix, otherNode, metric);
 }
 
+/* PDRM Change */
 void
 FibHelper::RemoveRoutes(Ptr<Node> node, const Name& prefix)
 {
@@ -195,6 +191,7 @@ FibHelper::RemoveRoutes(Ptr<Node> node, const Name& prefix)
     RemoveRoute(node, prefix, face);
   }
 }
+/* PDRM Change */
 
 void
 FibHelper::RemoveRoute(Ptr<Node> node, const Name& prefix, shared_ptr<Face> face)
