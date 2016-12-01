@@ -120,7 +120,7 @@ PDRMProvider::OnInterest(shared_ptr<const Interest> interest)
   if (m_announcedPrefixes.count(producerPrefix) == 0 && m_announcedPrefixes.count(objectPrefix) == 0)
     return;
 
-//  NS_LOG_INFO(interest->getName());
+  NS_LOG_INFO(interest->getName());
   
   // Create data packet
   auto data = make_shared<Data>();
@@ -172,6 +172,7 @@ PDRMProvider::AnnouncePrefix(Name prefix)
 
   FibHelper::AddRoute(GetNode(), prefix, m_face, 0);  
   ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
 }
 
 void

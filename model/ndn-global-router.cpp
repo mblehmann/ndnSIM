@@ -87,6 +87,7 @@ GlobalRouter::RemoveLocalPrefix(shared_ptr<Name> prefix)
   for (auto &entry : m_localPrefixes) {
     if (prefix->toUri() == entry->toUri()) {
       m_localPrefixes.remove(entry);
+      //std::cout << "Removed: " << entry->toUri() << std::endl;
       return;
     }
   }

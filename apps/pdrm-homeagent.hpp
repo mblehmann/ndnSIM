@@ -45,6 +45,9 @@ public:
 
   // inherited from NdnApp
   virtual void
+  OnTimeout(Name chunk);
+
+  virtual void
   OnInterest(shared_ptr<const Interest> interest);
 
   virtual void
@@ -70,6 +73,8 @@ protected:
 
   set<Name> m_unavailableProducers;
   map<Name, vector<Interest> > m_storedInterests;
+  map<Name, map<Name, EventId> > m_retxEvent;
+  Time m_interestLifeTime;
 
   Ptr<PDRMGlobal> m_global;
 

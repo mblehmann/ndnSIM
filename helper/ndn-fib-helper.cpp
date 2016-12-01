@@ -42,6 +42,7 @@
 #include "ns3/ndnSIM/model/ndn-l3-protocol.hpp"
 #include "ns3/ndnSIM/helper/ndn-stack-helper.hpp"
 
+#include "model/ndn-global-router.hpp"
 
 namespace ns3 {
 namespace ndn {
@@ -181,6 +182,13 @@ FibHelper::AddRoute(const std::string& nodeName, const Name& prefix,
 void
 FibHelper::RemoveRoutes(Ptr<Node> node, const Name& prefix)
 {
+  Ptr<GlobalRouter> source = node->GetObject<GlobalRouter>();
+  for (auto& pr : source->GetLocalPrefixes()) {
+    //std::cout << *pr << " == " << prefix.toUri() << std::endl;
+    if (prefix.toUri() == pr->toUri())
+      return;
+  }
+
   // Get L3Protocol object
   Ptr<L3Protocol> L3protocol = node->GetObject<L3Protocol>();
   // Get the forwarder instance

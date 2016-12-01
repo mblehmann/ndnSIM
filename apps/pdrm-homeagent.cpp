@@ -65,7 +65,14 @@ PDRMHomeAgent::GetTypeId(void)
                     "Unregister prefix",
                     StringValue("/unregister"),
                     MakeNameAccessor(&PDRMHomeAgent::m_unregisterPrefix),
-                    MakeNameChecker());
+                    MakeNameChecker())
+
+      .AddAttribute("Lifetime",
+                    "Lifetime for interest packet",
+                    StringValue("5s"),
+                    MakeTimeAccessor(&PDRMHomeAgent::m_interestLifeTime),
+                    MakeTimeChecker()); 
+
 /*
       // Tracing
       .AddTraceSource("ServedData",
@@ -104,6 +111,26 @@ PDRMHomeAgent::StopApplication()
   App::StopApplication();
 }
 
+void
+PDRMHomeAgent::OnTimeout(Name chunk)
+{
+  Name producerPrefix = chunk.getPrefix(1);
+
+  if (m_retxEvent[producerPrefix].count(chunk) == 0)
+    return;
+
+  shared_ptr<Interest> interest;
+  for (uint32_t i = 0; i < m_storedInterests[producerPrefix].size(); i++)
+  {
+    interest = make_shared<Interest>(m_storedInterests[producerPrefix][i]);
+    if (chunk == interest->getName()) {
+      m_storedInterests[producerPrefix].erase(m_storedInterests[producerPrefix].begin() + i);
+      NS_LOG_INFO(chunk);
+      return;
+    }
+  }
+}
+
 /**
  * Receives an interest.
  * If it is an update request, update the locator for the prefix (/update/prefix/locator)
@@ -139,6 +166,7 @@ PDRMHomeAgent::OnInterest(shared_ptr<const Interest> interest)
     producerPrefix = object.getPrefix(1);
     if (m_unavailableProducers.count(producerPrefix) > 0) { 
       m_storedInterests[producerPrefix].push_back(*interest);
+      m_retxEvent[producerPrefix][object] = Simulator::Schedule(m_interestLifeTime, &PDRMHomeAgent::OnTimeout, this, object);
       //m_servedData(this, interest->getName(), "homeagent");
     }
   }
@@ -183,6 +211,7 @@ PDRMHomeAgent::Unregister(Name producerPrefix)
 
   m_storedInterests.erase(producerPrefix);
   m_unavailableProducers.erase(producerPrefix);
+  m_retxEvent.erase(producerPrefix);
 }
 
 } // namespace ndn
