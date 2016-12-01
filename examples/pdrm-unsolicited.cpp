@@ -183,7 +183,10 @@ main(int argc, char* argv[])
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
-  ndnHelper.SetOldContentStore("ns3::ndn::cs::Stats::Lru", "MaxSize", to_string((int) (c.object_size * c.catalog_size * c.cache_size)));
+  if (c.cache_size)
+    ndnHelper.SetOldContentStore("ns3::ndn::cs::Stats::Lru", "MaxSize", to_string((int) (c.object_size * c.catalog_size * c.cache_size)));
+  else
+    ndnHelper.SetOldContentStore("ns3::ndn::cs::Nocache");
   ndnHelper.InstallAll();
 
   for (uint32_t i = 0; i < c.mobile_producers; i++)

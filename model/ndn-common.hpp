@@ -33,8 +33,6 @@
 #include <ndn-cxx/data.hpp>
 #include <ndn-cxx/security/key-chain.hpp>
 
-#include <ndn-cxx/announcement.hpp>
-
 #include <ndn-cxx/util/time.hpp>
 
 namespace nfd {
