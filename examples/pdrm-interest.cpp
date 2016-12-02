@@ -259,6 +259,8 @@ main(int argc, char* argv[])
   homeAgent.SetAttribute("HomeAgentPrefix", StringValue(c.homeagent_prefix)); 
   homeAgent.SetAttribute("RegisterPrefix", StringValue(c.register_prefix)); 
   homeAgent.SetAttribute("UnregisterPrefix", StringValue(c.unregister_prefix));
+  homeAgent.SetAttribute("Catalog", PointerValue(catalog)); 
+  homeAgent.SetAttribute("Global", PointerValue(global));
   homeAgent.Install(nodes.Get(0));
 
   // Mobile

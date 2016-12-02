@@ -22,6 +22,7 @@
 
 #include "ndn-app.hpp"
 
+#include <utils/pdrm-catalog.hpp>
 #include <utils/pdrm-global.hpp>
 
 namespace ns3 {
@@ -72,10 +73,12 @@ protected:
   Name m_unregisterPrefix;
 
   set<Name> m_unavailableProducers;
-  map<Name, vector<Interest> > m_storedInterests;
+  map<Name, vector<Name> > m_storedObjects;
   map<Name, map<Name, EventId> > m_retxEvent;
+  Ptr<UniformRandomVariable> m_rand; // nonce generator
   Time m_interestLifeTime;
 
+  Ptr<PDRMCatalog> m_catalog;
   Ptr<PDRMGlobal> m_global;
 
 //  TracedCallback<Ptr<App>, Name, string> m_servedData;

@@ -71,7 +71,20 @@ PDRMHomeAgent::GetTypeId(void)
                     "Lifetime for interest packet",
                     StringValue("5s"),
                     MakeTimeAccessor(&PDRMHomeAgent::m_interestLifeTime),
-                    MakeTimeChecker()); 
+                    MakeTimeChecker())
+
+      // Global
+      .AddAttribute("Catalog",
+                    "Content catalog",
+                    PointerValue(NULL),
+                    MakePointerAccessor(&PDRMHomeAgent::m_catalog),
+                    MakePointerChecker<PDRMCatalog>())
+
+      .AddAttribute("Global",
+                    "Global variables",
+                    PointerValue(NULL),
+                    MakePointerAccessor(&PDRMHomeAgent::m_global),
+                    MakePointerChecker<PDRMGlobal>());
 
 /*
       // Tracing
@@ -84,6 +97,7 @@ PDRMHomeAgent::GetTypeId(void)
 }
 
 PDRMHomeAgent::PDRMHomeAgent()
+  : m_rand(CreateObject<UniformRandomVariable>())
 {
   NS_LOG_FUNCTION_NOARGS();
 }
@@ -112,20 +126,19 @@ PDRMHomeAgent::StopApplication()
 }
 
 void
-PDRMHomeAgent::OnTimeout(Name chunk)
+PDRMHomeAgent::OnTimeout(Name object)
 {
-  Name producerPrefix = chunk.getPrefix(1);
+  Name producerPrefix = object.getPrefix(1);
 
-  if (m_retxEvent[producerPrefix].count(chunk) == 0)
+  if (m_retxEvent[producerPrefix].count(object) == 0)
     return;
 
   shared_ptr<Interest> interest;
-  for (uint32_t i = 0; i < m_storedInterests[producerPrefix].size(); i++)
+  for (uint32_t i = 0; i < m_storedObjects[producerPrefix].size(); i++)
   {
-    interest = make_shared<Interest>(m_storedInterests[producerPrefix][i]);
-    if (chunk == interest->getName()) {
-      m_storedInterests[producerPrefix].erase(m_storedInterests[producerPrefix].begin() + i);
-      NS_LOG_INFO(chunk);
+    if (object.toUri() == m_storedObjects[producerPrefix][i].toUri()) {
+      m_storedObjects[producerPrefix].erase(m_storedObjects[producerPrefix].begin() + i);
+      NS_LOG_INFO(object);
       return;
     }
   }
@@ -146,26 +159,33 @@ PDRMHomeAgent::OnInterest(shared_ptr<const Interest> interest)
   if (!m_active)
     return;
 
-  NS_LOG_INFO(interest->getName());
+  Name chunk = interest->getName();
+  Name producerPrefix = chunk.getSubName(2);
 
-  Name object = interest->getName();
-  Name producerPrefix = object.getSubName(2);
-
-  if (m_registerPrefix.isPrefixOf(object))
+  if (m_registerPrefix.isPrefixOf(chunk))
   {
-    producerPrefix = object.getSubName(2);
+    producerPrefix = chunk.getSubName(2);
     Register(producerPrefix);
   }
-  else if (m_unregisterPrefix.isPrefixOf(object))
+  else if (m_unregisterPrefix.isPrefixOf(chunk))
   {
-    producerPrefix = object.getSubName(2);
+    producerPrefix = chunk.getSubName(2);
     Unregister(producerPrefix);
   }
   else
   {
-    producerPrefix = object.getPrefix(1);
+    producerPrefix = chunk.getPrefix(1);
     if (m_unavailableProducers.count(producerPrefix) > 0) { 
-      m_storedInterests[producerPrefix].push_back(*interest);
+      Name object = chunk.getPrefix(2);
+      for (uint32_t i = 0; i < m_storedObjects[producerPrefix].size(); i++) {
+        if (object.toUri() == m_storedObjects[producerPrefix][i].toUri()) {
+          Simulator::Remove(m_retxEvent[producerPrefix][object]);
+          m_retxEvent[producerPrefix][object] = Simulator::Schedule(m_interestLifeTime, &PDRMHomeAgent::OnTimeout, this, object);
+          return;
+        }
+      }
+      NS_LOG_INFO(object);
+      m_storedObjects[producerPrefix].push_back(object);
       m_retxEvent[producerPrefix][object] = Simulator::Schedule(m_interestLifeTime, &PDRMHomeAgent::OnTimeout, this, object);
       //m_servedData(this, interest->getName(), "homeagent");
     }
@@ -190,9 +210,7 @@ PDRMHomeAgent::Register(Name producerPrefix)
 void
 PDRMHomeAgent::Unregister(Name producerPrefix)
 {
-  NS_LOG_INFO(producerPrefix << " " << m_storedInterests[producerPrefix].size());
-
-  shared_ptr<Interest> interest;
+  NS_LOG_INFO(producerPrefix << " " << m_storedObjects[producerPrefix].size());
 
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
   ndnGlobalRoutingHelper.RemoveOrigin(producerPrefix.toUri(), GetNode());
@@ -201,15 +219,27 @@ PDRMHomeAgent::Unregister(Name producerPrefix)
   ndn::GlobalRoutingHelper::CalculateRoutes();
   ndn::GlobalRoutingHelper::PrintFIBs();
 
-  for (uint32_t i = 0; i < m_storedInterests[producerPrefix].size(); i++)
+  for (uint32_t i = 0; i < m_storedObjects[producerPrefix].size(); i++)
   {
-    interest = make_shared<Interest>(m_storedInterests[producerPrefix][i]);
-    m_transmittedInterests(interest, this, m_face);
-    m_face->onReceiveInterest(*interest);
-    NS_LOG_INFO(interest->getName());
+    ContentObject object = m_catalog->getObject(m_storedObjects[producerPrefix][i]);
+
+    for (uint32_t j = 0; j < object.size; j++) {
+      shared_ptr<Interest> interest = make_shared<Interest>();
+      interest->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
+
+      Name interestName = object.name;
+      interestName.appendSequenceNumber(j);
+      interest->setName(interestName);
+      interest->setInterestLifetime((time::milliseconds) m_interestLifeTime.GetMilliSeconds());
+
+      m_transmittedInterests(interest, this, m_face);
+      m_face->onReceiveInterest(*interest);
+    }
+
+    NS_LOG_INFO(m_storedObjects[producerPrefix][i]);
   }
 
-  m_storedInterests.erase(producerPrefix);
+  m_storedObjects.erase(producerPrefix);
   m_unavailableProducers.erase(producerPrefix);
   m_retxEvent.erase(producerPrefix);
 }
