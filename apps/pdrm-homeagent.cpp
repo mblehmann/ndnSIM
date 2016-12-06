@@ -84,15 +84,19 @@ PDRMHomeAgent::GetTypeId(void)
                     "Global variables",
                     PointerValue(NULL),
                     MakePointerAccessor(&PDRMHomeAgent::m_global),
-                    MakePointerChecker<PDRMGlobal>());
+                    MakePointerChecker<PDRMGlobal>())
 
-/*
       // Tracing
-      .AddTraceSource("ServedData",
-                      "Data served by the provider",
-                      MakeTraceSourceAccessor(&PDRMHomeAgent::m_servedData),
-                      "ns3::ndn::PDRMHomeAgent::ServedDataCallback");
-*/
+      .AddTraceSource("AnnouncedPrefix",
+                      "Announcement and Unannoncement of prefixes by the home agent",
+                      MakeTraceSourceAccessor(&PDRMHomeAgent::m_announcedPrefix),
+                      "ns3::ndn::PDRMHomeAgent::AnnouncedPrefixCallback")
+
+      .AddTraceSource("InterceptedInterest",
+                      "Interests intercepted by the home agent",
+                      MakeTraceSourceAccessor(&PDRMHomeAgent::m_interceptedInterest),
+                      "ns3::ndn::PDRMHomeAgent::InterceptedInterestCallback");
+
   return tid;
 }
 
@@ -139,6 +143,8 @@ PDRMHomeAgent::OnTimeout(Name object)
     if (object.toUri() == m_storedObjects[producerPrefix][i].toUri()) {
       m_storedObjects[producerPrefix].erase(m_storedObjects[producerPrefix].begin() + i);
       NS_LOG_INFO(object);
+
+      m_interceptedInterest(this, object, false, true, false);
       return;
     }
   }
@@ -185,9 +191,10 @@ PDRMHomeAgent::OnInterest(shared_ptr<const Interest> interest)
         }
       }
       NS_LOG_INFO(object);
+      m_interceptedInterest(this, object, true, false, false);
+
       m_storedObjects[producerPrefix].push_back(object);
       m_retxEvent[producerPrefix][object] = Simulator::Schedule(m_interestLifeTime, &PDRMHomeAgent::OnTimeout, this, object);
-      //m_servedData(this, interest->getName(), "homeagent");
     }
   }
 }
@@ -196,6 +203,7 @@ void
 PDRMHomeAgent::Register(Name producerPrefix)
 {
   NS_LOG_INFO(producerPrefix);
+  m_announcedPrefix(this, producerPrefix, true);
 
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
   ndnGlobalRoutingHelper.AddOrigin(producerPrefix.toUri(), this->GetNode());
@@ -211,6 +219,7 @@ void
 PDRMHomeAgent::Unregister(Name producerPrefix)
 {
   NS_LOG_INFO(producerPrefix << " " << m_storedObjects[producerPrefix].size());
+  m_announcedPrefix(this, producerPrefix, false);
 
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
   ndnGlobalRoutingHelper.RemoveOrigin(producerPrefix.toUri(), GetNode());
@@ -236,6 +245,7 @@ PDRMHomeAgent::Unregister(Name producerPrefix)
       m_face->onReceiveInterest(*interest);
     }
 
+    m_interceptedInterest(this, object.name, false, false, true);
     NS_LOG_INFO(m_storedObjects[producerPrefix][i]);
   }
 

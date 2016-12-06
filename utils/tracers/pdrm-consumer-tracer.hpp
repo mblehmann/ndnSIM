@@ -127,10 +127,10 @@ private:
   Connect();
 
   void
-  ChunkRetrievalDelay(Ptr<App> app, Name object, uint32_t chunk, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount);
+  ChunkRetrievalDelay(Ptr<App> app, Name chunk, uint32_t order, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount);
 
   void
-  ObjectDownloadTime(Ptr<App> app, Name object, Time download, uint32_t size, uint32_t requests, uint32_t timeouts);
+  ObjectDownloadTime(Ptr<App> app, Name object, Time download, uint32_t requests);
 
 private:
   std::string m_node;

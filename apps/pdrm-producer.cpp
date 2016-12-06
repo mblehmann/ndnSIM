@@ -60,7 +60,12 @@ PDRMProducer::GetTypeId(void)
                     "Object prefix for this producer",
                     StringValue("/object"),
                     MakeNameAccessor(&PDRMProducer::m_objectPrefix),
-                    MakeNameChecker());
+                    MakeNameChecker())
+
+      .AddTraceSource("ProducedObject",
+                      "Objects produced by the producer",
+                      MakeTraceSourceAccessor(&PDRMProducer::m_producedObject),
+                      "ns3::ndn::PDRMProducer::ProducedObjectCallback");
 
   return tid;
 }
@@ -79,7 +84,7 @@ PDRMProducer::StartApplication()
 
   // update the producer prefix with the node ID
   m_producerPrefix = m_producerPrefix.toUri() + to_string(GetNode()->GetId());
-  AnnouncePrefix(m_producerPrefix);
+  AnnouncePrefix(m_producerPrefix, true);
 
   if (!m_producingInterval.IsZero()) {
     Simulator::Schedule(m_producingInterval, &PDRMProducer::ProduceObject, this);
@@ -108,9 +113,21 @@ PDRMProducer::WarmUp()
   NS_LOG_FUNCTION_NOARGS();
   uint32_t catalogSize = m_catalog->getCatalogSize();
 
+  vector<int> index_list;
   for (uint32_t index = 0; index < catalogSize; index++) {
-    PopulateCatalog(index);
+    index_list.push_back(index);
   }
+  random_shuffle(index_list.begin(), index_list.end());
+
+  uint32_t index;
+  while (index_list.size() > 0) {
+    index = index_list.back();
+    PopulateCatalog(index);
+    index_list.pop_back();
+  }
+
+  m_warmup = false;
+  m_execution = true;
 }
 
 /**
@@ -131,6 +148,10 @@ PDRMProducer::PopulateCatalog(uint32_t index)
 
   //generate content
   m_catalog->addObject(*object, index);
+
+  ContentObject co = m_catalog->getObject(*object);
+  uint32_t popularity = m_catalog->getObjectPopularity(*object);
+  m_producedObject(this, *object, co.size, co.availability, popularity);
 }
 
 /**
@@ -139,6 +160,12 @@ PDRMProducer::PopulateCatalog(uint32_t index)
 void
 PDRMProducer::ProduceObject()
 {
+  NS_LOG_INFO(Simulator::Now() << " " << m_end << " " << m_execution);
+  if (Simulator::Now() > m_end) {
+    m_execution = false;
+    return;
+  }
+
   NS_LOG_FUNCTION_NOARGS();
   //get content name
   int objectIndex = m_producedObjects.size();
@@ -152,6 +179,11 @@ PDRMProducer::ProduceObject()
 
   //generate content
   m_catalog->addObject(*object);
+
+  ContentObject co = m_catalog->getObject(*object);
+  uint32_t popularity = m_catalog->getObjectPopularity(*object);
+  m_producedObject(this, *object, co.size, co.availability, popularity);
+  NS_LOG_FUNCTION_NOARGS();
 
   Simulator::Schedule(m_producingInterval, &PDRMProducer::ProduceObject, this);
 }

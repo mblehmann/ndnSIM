@@ -17,8 +17,8 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-#ifndef PDRM_PRODUCER_TRACER_H
-#define PDRM_PRODUCER_TRACER_H
+#ifndef PDRM_PROPOSAL_TRACER_H
+#define PDRM_PROPOSAL_TRACER_H
 
 #include "ns3/ndnSIM/model/ndn-common.hpp"
 
@@ -39,7 +39,7 @@ class App;
  * @ingroup ndn-tracers
  * @brief Tracer to obtain application-level delays
  */
-class PDRMProducerTracer : public SimpleRefCount<PDRMProducerTracer> {
+class PDRMProposalTracer : public SimpleRefCount<PDRMProposalTracer> {
 public:
   /**
    * @brief Helper method to install tracers on all simulation nodes
@@ -83,7 +83,7 @@ public:
    *          !!! Attention !!! This tuple needs to be preserved for the lifetime of simulation,
    *          otherwise SEGFAULTs are inevitable
    */
-  static Ptr<PDRMProducerTracer>
+  static Ptr<PDRMProposalTracer>
   Install(Ptr<Node> node, shared_ptr<std::ostream> outputStream);
 
   /**
@@ -100,19 +100,19 @@ public:
    * @param os    reference to the output stream
    * @param node  pointer to the node
    */
-  PDRMProducerTracer(shared_ptr<std::ostream> os, Ptr<Node> node);
+  PDRMProposalTracer(shared_ptr<std::ostream> os, Ptr<Node> node);
 
   /**
    * @brief Trace constructor that attaches to all applications on the node using node's name
    * @param os        reference to the output stream
    * @param nodeName  name of the node registered using Names::Add
    */
-  PDRMProducerTracer(shared_ptr<std::ostream> os, const std::string& node);
+  PDRMProposalTracer(shared_ptr<std::ostream> os, const std::string& node);
 
   /**
    * @brief Destructor
    */
-  ~PDRMProducerTracer();
+  ~PDRMProposalTracer();
 
   /**
    * @brief Print head of the trace (e.g., for post-processing)
@@ -127,13 +127,31 @@ private:
   Connect();
 
   void
-  ServedData(Ptr<App> app, Name object);
+  PushedUnsolicitedData(Ptr<App> app, Name object);
 
   void
-  AnnouncedPrefix(Ptr<App> app, Name prefix, bool isAnnouncing);
+  PushedUnsolicitedObject(Ptr<App> app, Name object, bool isPushed, bool isTimeout);
 
   void
-  ProducedObject(Ptr<App> app, Name object, uint32_t size, double availability, uint32_t popularity);
+  InterceptedInterest(Ptr<App> app, Name object, bool isStored, bool isTimeout, bool isSent);
+
+  void
+  ReceivedHint(Ptr<App> app, Name object, bool isAccepted);
+
+  void
+  ReceivedVicinityData(Ptr<App> app, Name object, int32_t nodeId, int32_t currentPosition, double availability, bool isInterested);
+
+  void
+  ReplicatedContent(Ptr<App> app, Name object);
+
+  void
+  ProbedVicinity(Ptr<App> app, Name object, int32_t vicinitySize);
+
+  void
+  SelectedDevice(Ptr<App> app, Name object, bool isSatisfied, bool isHinted, int nodeId, double producerAvailability);
+
+  void
+  HintedContent(Ptr<App> app, Name object, int deviceId);
 
 private:
   std::string m_node;
@@ -145,4 +163,4 @@ private:
 } // namespace ndn
 } // namespace ns3
 
-#endif // PDRM_PRODUCER_TRACER_H
+#endif // PDRM_PROPOSAL_TRACER_H

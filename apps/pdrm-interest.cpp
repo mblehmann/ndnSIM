@@ -111,7 +111,7 @@ void
 PDRMInterest::RegisterPrefix(Name prefix)
 { 
   NS_LOG_FUNCTION_NOARGS();
-  PDRMProvider::UnannouncePrefix(prefix);
+  PDRMProvider::UnannouncePrefix(prefix, true);
 
   Name announcement = m_homeAgentPrefix.toUri() + m_registerPrefix.toUri() + prefix.toUri();
   SendInterest(announcement);
@@ -121,7 +121,7 @@ void
 PDRMInterest::UnregisterPrefix(Name prefix)
 { 
   NS_LOG_FUNCTION_NOARGS();
-  PDRMProvider::AnnouncePrefix(prefix);
+  PDRMProvider::AnnouncePrefix(prefix, true);
 
   Name unannouncement = m_homeAgentPrefix.toUri() + m_unregisterPrefix.toUri() + prefix.toUri();
   SendInterest(unannouncement);

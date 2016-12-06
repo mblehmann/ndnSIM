@@ -67,7 +67,13 @@ PDRMProvider::GetTypeId(void)
       .AddTraceSource("ServedData",
                       "Data served by the provider",
                       MakeTraceSourceAccessor(&PDRMProvider::m_servedData),
-                      "ns3::ndn::PDRMProvider::ServedDataCallback");
+                      "ns3::ndn::PDRMProvider::ServedDataCallback")
+
+      .AddTraceSource("AnnouncedPrefix",
+                      "Announcement and Unannoncement of prefixes by the provider",
+                      MakeTraceSourceAccessor(&PDRMProvider::m_announcedPrefix),
+                      "ns3::ndn::PDRMProvider::AnnouncedPrefixCallback");
+
   return tid;
 }
 
@@ -120,7 +126,7 @@ PDRMProvider::OnInterest(shared_ptr<const Interest> interest)
   if (m_announcedPrefixes.count(producerPrefix) == 0 && m_announcedPrefixes.count(objectPrefix) == 0)
     return;
 
-  NS_LOG_INFO(interest->getName());
+//  NS_LOG_INFO(interest->getName());
   
   // Create data packet
   auto data = make_shared<Data>();
@@ -142,13 +148,6 @@ PDRMProvider::OnInterest(shared_ptr<const Interest> interest)
   data->setSignature(signature);
   
   // logging and stats
-/*
-  if (m_custodian)
-    m_servedData(this, interest->getName(), "custodian");
-  else if (!m_producerPrefix.isPrefixOf(interest))
-    m_servedData(this, interest->getName(), "provider");
-  else
-*/
   m_servedData(this, interest->getName());
   
   // Send it
@@ -162,31 +161,37 @@ PDRMProvider::OnInterest(shared_ptr<const Interest> interest)
  *
  */
 void
-PDRMProvider::AnnouncePrefix(Name prefix)
+PDRMProvider::AnnouncePrefix(Name prefix, bool updateRouting)
 {
   NS_LOG_INFO(prefix);
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
 
   m_announcedPrefixes.insert(prefix);
+  m_announcedPrefix(this, prefix, true);
   ndnGlobalRoutingHelper.AddOrigin(prefix.toUri(), this->GetNode());
 
-  FibHelper::AddRoute(GetNode(), prefix, m_face, 0);  
-  ndn::GlobalRoutingHelper::CalculateRoutes();
-  ndn::GlobalRoutingHelper::PrintFIBs();
+  FibHelper::AddRoute(GetNode(), prefix, m_face, 0);
+  if (updateRouting) {
+    ndn::GlobalRoutingHelper::CalculateRoutes();
+    ndn::GlobalRoutingHelper::PrintFIBs();
+  }
 }
 
 void
-PDRMProvider::UnannouncePrefix(Name prefix)
+PDRMProvider::UnannouncePrefix(Name prefix, bool updateRouting)
 {
   NS_LOG_INFO(prefix);
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
 
   m_announcedPrefixes.erase(prefix);
+  m_announcedPrefix(this, prefix, false);
   ndnGlobalRoutingHelper.RemoveOrigin(prefix.toUri(), this->GetNode());
 
   FibHelper::RemoveRoute(GetNode(), prefix, m_face);
-  ndn::GlobalRoutingHelper::CalculateRoutes();
-  ndn::GlobalRoutingHelper::PrintFIBs();
+  if (updateRouting) {
+    ndn::GlobalRoutingHelper::CalculateRoutes();
+    ndn::GlobalRoutingHelper::PrintFIBs();
+  }
 }
 
 void
@@ -207,7 +212,7 @@ PDRMProvider::DeleteObject()
 {
   NS_LOG_FUNCTION_NOARGS();
   Name object = m_storage[m_circularIndex];
-  UnannouncePrefix(object);
+  UnannouncePrefix(object, true);
 }
 
 } // namespace ndn

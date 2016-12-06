@@ -71,9 +71,7 @@ PDRMCustodian::StartApplication()
   PDRMMobileProducer::StartApplication();
 
   if (m_custodian) {
-    AnnouncePrefix(m_custodianPrefix);
-    m_warmup = false;
-    m_execution = true;
+    AnnouncePrefix(m_custodianPrefix, true);
   }
 }
 
@@ -110,9 +108,18 @@ PDRMCustodian::OnHint(shared_ptr<const Interest> interest)
   App::OnInterest(interest);
 
   Name object = interest->getName().getSubName(2);
-
   StoreObject(object);
-  Simulator::ScheduleNow(&PDRMConsumer::FoundObject, this, object);
+
+  if (m_warmup) {
+    ConcludeObjectDownload(object);
+    if (m_updateNetwork.IsRunning()) {
+      Simulator::Remove(m_updateNetwork);
+    }
+    m_updateNetwork = Simulator::Schedule(Time("50ms"), &PDRMStrategy::UpdateNetwork, this);
+  } else {
+    m_receivedHint(this, object, true);
+    Simulator::ScheduleNow(&PDRMConsumer::FoundObject, this, object);
+  }
 }
 
 // PRODUCER ACTIONS
@@ -132,21 +139,13 @@ PDRMCustodian::ProduceObject()
 void
 PDRMCustodian::ReplicateContent()
 {
-  if (m_pendingReplication.size() == 0)
+  if (m_pendingReplication.size() == 0 || m_moving)
     return;
 
   Name object = m_pendingReplication.front();
   NS_LOG_INFO(object);
-  PushContent(object);
-}
+  m_replicatedContent(this, object);
 
-void
-PDRMCustodian::PushContent(Name object)
-{
-  if (m_moving)
-    return;
-
-  NS_LOG_INFO(object);
   HintContent(object);
 
   m_pendingReplication.pop();
@@ -160,6 +159,7 @@ PDRMCustodian::HintContent(Name object)
   // name: /custodian/hint/object
   Name hintName = m_custodianPrefix.toUri() + m_hintPrefix.toUri() + object.toUri();
   NS_LOG_INFO(hintName);
+  m_hintedContent(this, object, -1);
 
   shared_ptr<Interest> hint = make_shared<Interest>();
   hint->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));

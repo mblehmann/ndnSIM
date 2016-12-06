@@ -87,7 +87,7 @@ struct Configuration {
  double availability;
  double variance;
 
- string chunks_push;
+ string objects_push;
  string idle_request;
 };
 
@@ -132,7 +132,7 @@ parseInput(string inputfile)
  infile >> parameter >> c.availability;
  infile >> parameter >> c.variance;
 
- infile >> parameter >> c.chunks_push;
+ infile >> parameter >> c.objects_push;
  infile >> parameter >> c.idle_request;
 
  return c;
@@ -244,7 +244,7 @@ main(int argc, char* argv[])
     mobileProvider.SetAttribute("Mobile", StringValue("false"));
   else
     mobileProvider.SetAttribute("Mobile", StringValue("true")); 
-  mobileProvider.SetAttribute("ChunksToPush", StringValue(c.chunks_push)); 
+  mobileProvider.SetAttribute("ObjectsToPush", StringValue(c.objects_push)); 
   mobileProvider.SetAttribute("IdleRequest", StringValue(c.idle_request)); 
 
 
@@ -296,6 +296,7 @@ main(int argc, char* argv[])
   ndn::PDRMConsumerTracer::InstallAll(scenario_prefix + inputfile + "-consumer.txt");
   ndn::PDRMProducerTracer::InstallAll(scenario_prefix + inputfile + "-producer.txt");
   ndn::PDRMMobileTracer::InstallAll(scenario_prefix + inputfile + "-mobility.txt");
+  ndn::PDRMProposalTracer::InstallAll(scenario_prefix + inputfile + "-proposal.txt");
 
   Simulator::Run();
   Simulator::Destroy();

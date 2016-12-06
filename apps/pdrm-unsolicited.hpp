@@ -64,6 +64,9 @@ public:
   virtual void
   UnsolicitedMove(Ptr<const MobilityModel> model);
 
+  typedef void (*PushedUnsolicitedDataCallback)(Ptr<App> app, Name object);
+  typedef void (*PushedUnsolicitedObjectCallback)(Ptr<App> app, Name object, bool isPushed, bool isTimeout);
+
 protected:
 
   virtual void
@@ -74,14 +77,16 @@ protected:
 
 private:
   // Strategy (vicinity, hint, and replication)
-  uint32_t m_chunksToPush;
-  set<Name> m_activeRequests;
+  uint32_t m_objectsToPush;
+  vector<Name> m_activeRequests;
 
-  map<Name, uint32_t> m_lastChunkServed;
   Name m_unsolicitedPrefix;
 
   Time m_idleRequest;
   map<Name, EventId> m_timeoutUnsolicitedData;
+
+  TracedCallback<Ptr<App>, Name> m_pushedUnsolicitedData;
+  TracedCallback<Ptr<App>, Name, bool, bool> m_pushedUnsolicitedObject;
 };
 
 } // namespace ndn

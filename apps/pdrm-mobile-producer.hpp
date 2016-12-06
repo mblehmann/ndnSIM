@@ -61,7 +61,7 @@ public:
   virtual void
   Session(Ptr<const MobilityModel> model);
 
-  typedef void (*MobilityEventCallback)(Ptr<App> app, bool moving, uint32_t homeNetwork, uint32_t position, double availability);
+  typedef void (*MobilityEventCallback)(Ptr<App> app, bool isMoving, uint32_t homeNetwork, uint32_t position, Time session, Time movement, double availability);
 
 protected:
 
@@ -86,7 +86,7 @@ protected:
   map<uint32_t, Time> m_timeSpent;
 
   // Tracers
-  TracedCallback<Ptr<App>, bool, uint32_t, uint32_t, double> m_mobilityEvent;
+  TracedCallback<Ptr<App>, bool, uint32_t, uint32_t, Time, Time, double> m_mobilityEvent;
  
 };
 

@@ -57,7 +57,8 @@ public:
   virtual void
   Unregister(Name producerPrefix);
 
-//  typedef void (*ServedDataCallback)(Ptr<App> app, Name object, string role);
+  typedef void (*AnnouncedPrefixCallback)(Ptr<App> app, Name prefix, bool isAnnouncing);
+  typedef void (*InterceptedInterestCallback)(Ptr<App> app, Name object, bool isStored, bool isTimeout, bool isSent);
 
 protected:
   // inherited from Application base class.
@@ -81,7 +82,8 @@ protected:
   Ptr<PDRMCatalog> m_catalog;
   Ptr<PDRMGlobal> m_global;
 
-//  TracedCallback<Ptr<App>, Name, string> m_servedData;
+  TracedCallback<Ptr<App>, Name, bool> m_announcedPrefix;
+  TracedCallback<Ptr<App>, Name, bool, bool, bool> m_interceptedInterest;
 };
 
 } // namespace ndn

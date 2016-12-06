@@ -84,8 +84,8 @@ public:
   virtual void
   ConcludeObjectDownload(Name object);
 
-  typedef void (*ChunkRetrievalDelayCallback)(Ptr<App> app, Name object, uint32_t chunk, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount);
-  typedef void (*ObjectDownloadTimeCallback)(Ptr<App> app, Name object, Time download, uint32_t size, uint32_t requests, uint32_t timeouts);
+  typedef void (*ChunkRetrievalDelayCallback)(Ptr<App> app, Name chunk, uint32_t order, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount);
+  typedef void (*ObjectDownloadTimeCallback)(Ptr<App> app, Name object, Time download, uint32_t requests);
 
 protected:
 
@@ -111,7 +111,6 @@ protected:
 
   // retransmission data structures
   map<Name, EventId> m_retxEvent;      // retransmission event per chunk
-//  map<Name, Ptr<RttEstimator> > m_rtt; // 1 RTT estimator per object
 
   // Content catalog (global structure)
   Ptr<PDRMCatalog> m_catalog;
@@ -141,8 +140,8 @@ protected:
   // if retx count == 1; total delay = last delay
   TracedCallback<Ptr<App>, Name, uint32_t, Time, Time, uint32_t, uint32_t> m_chunkRetrievalDelay;
   
-  // Application, object name, download time, object size, total requests, timeouts
-  TracedCallback<Ptr<App>, Name, Time, uint32_t, uint32_t, uint32_t> m_objectDownloadTime;
+  // Application, object name, download time, total requests
+  TracedCallback<Ptr<App>, Name, Time, uint32_t> m_objectDownloadTime;
  
 };
 

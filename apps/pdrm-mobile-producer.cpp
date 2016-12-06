@@ -142,7 +142,7 @@ PDRMMobileProducer::Move(Ptr<const MobilityModel> model)
 
   m_lastMobilityEvent = Simulator::Now();
   m_userAvailability = m_sessionPeriod.GetSeconds() / (m_sessionPeriod.GetSeconds() + m_movementPeriod.GetSeconds() + 0.001);
-  m_mobilityEvent(this, m_moving, m_homeNetwork, m_position.x, m_userAvailability);
+  m_mobilityEvent(this, m_moving, m_homeNetwork, m_position.x, m_sessionPeriod, m_movementPeriod, m_userAvailability);
 }
 
 /**
@@ -163,7 +163,7 @@ PDRMMobileProducer::Session(Ptr<const MobilityModel> model)
 
   m_lastMobilityEvent = Simulator::Now();
   m_userAvailability = m_sessionPeriod.GetSeconds() / (m_sessionPeriod.GetSeconds() + m_movementPeriod.GetSeconds() + 0.001);
-  m_mobilityEvent(this, m_moving, m_homeNetwork, m_position.x, m_userAvailability);
+  m_mobilityEvent(this, m_moving, m_homeNetwork, m_position.x, m_sessionPeriod, m_movementPeriod, m_userAvailability);
 }
 
 void

@@ -86,7 +86,38 @@ PDRMStrategy::GetTypeId(void)
                     "Chance that a PDRM will be a consumer",
                     DoubleValue(1),
                     MakeDoubleAccessor(&PDRMStrategy::m_altruism),
-                    MakeDoubleChecker<double>());
+                    MakeDoubleChecker<double>())
+
+      // Tracing
+      .AddTraceSource("ReceivedHint",
+                      "Hints received by the node",
+                      MakeTraceSourceAccessor(&PDRMStrategy::m_receivedHint),
+                      "ns3::ndn::PDRMStrategy::ReceivedHintCallback")
+
+      .AddTraceSource("ReceivedVicinityData",
+                      "Vicinity data responses received by the node",
+                      MakeTraceSourceAccessor(&PDRMStrategy::m_receivedVicinityData),
+                      "ns3::ndn::PDRMStrategy::ReceivedVicinityDataCallback")
+
+      .AddTraceSource("ReplicatedContent",
+                      "Content replicated by the node",
+                      MakeTraceSourceAccessor(&PDRMStrategy::m_replicatedContent),
+                      "ns3::ndn::PDRMStrategy::ReplicatedContentCallback")
+
+      .AddTraceSource("ProbedVicinity",
+                      "Number of times the vicinity was probed by the node",
+                      MakeTraceSourceAccessor(&PDRMStrategy::m_probedVicinity),
+                      "ns3::ndn::PDRMStrategy::ProbedVicinityCallback")
+
+      .AddTraceSource("SelectedDevice",
+                      "Devices selected to receive an object copy by the node",
+                      MakeTraceSourceAccessor(&PDRMStrategy::m_selectedDevice),
+                      "ns3::ndn::PDRMStrategy::SelectedDeviceCallback")
+
+      .AddTraceSource("HintedContent",
+                      "Hints sent by the node",
+                      MakeTraceSourceAccessor(&PDRMStrategy::m_hintedContent),
+                      "ns3::ndn::PDRMStrategy::HintedContentCallback");
 
   return tid;
 }
@@ -114,6 +145,46 @@ PDRMStrategy::StopApplication()
 void
 PDRMStrategy::EndGame()
 {
+}
+
+void
+PDRMStrategy::PopulateCatalog(uint32_t index)
+{
+  NS_LOG_INFO(index); 
+
+  //get content name
+  int objectIndex = m_producedObjects.size();
+
+  shared_ptr<Name> object = make_shared<Name>(m_producerPrefix);
+  Name objectName = m_objectPrefix.toUri() + to_string(objectIndex);
+  object->append(objectName);
+
+  m_producedObjects.insert(*object);
+  m_lastProducedObject = *object;
+
+  //generate content
+  m_catalog->addObject(*object, index);
+
+  ContentObject co = m_catalog->getObject(*object);
+  uint32_t popularity = m_catalog->getObjectPopularity(*object);
+  m_producedObject(this, *object, co.size, co.availability, popularity);
+
+  if (m_rand->GetValue(0, 1) < 0.5) {
+    m_pendingReplication.push(m_lastProducedObject);
+    ReplicateContent();
+  }
+}
+
+void
+PDRMStrategy::UpdateNetwork()
+{
+  NS_LOG_FUNCTION_NOARGS();
+  m_warmup = false;
+  m_execution = true;
+
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
 }
 
 void
@@ -145,7 +216,8 @@ PDRMStrategy::OnHint(shared_ptr<const Interest> interest)
   if (incomingSelectors.getNodeId() == GetNode()->GetId())
   { 
     Name object = interest->getName().getSubName(1, 2);
-    
+
+    m_receivedHint(this, object, true);    
     StoreObject(object);
     Simulator::ScheduleNow(&PDRMConsumer::FoundObject, this, object);
   }
@@ -264,6 +336,7 @@ PDRMStrategy::OnVicinityData(shared_ptr<const Data> data)
   PDRMStrategySelectors incomingSelectors = PDRMStrategySelectors(*block.elements_begin());
 
   Name object = data->getName().getSubName(1, 2);
+  m_receivedVicinityData(this, object, incomingSelectors.getNodeId(), incomingSelectors.getCurrentPosition(), incomingSelectors.getAvailability(), incomingSelectors.getInterest());
   m_vicinity[object].push_back(incomingSelectors);
 }
 
@@ -285,7 +358,7 @@ void
 PDRMStrategy::ConcludeObjectDownload(Name object)
 {
   NS_LOG_FUNCTION_NOARGS();
-  PDRMProvider::AnnouncePrefix(object);
+  PDRMProvider::AnnouncePrefix(object, !m_warmup);
   PDRMConsumer::ConcludeObjectDownload(object);
 }
 
@@ -311,6 +384,7 @@ PDRMStrategy::ReplicateContent()
 
   Name object = m_pendingReplication.front();
   NS_LOG_INFO(object);
+  m_replicatedContent(this, object);
 
   ProbeVicinity(object);
   m_pendingReplication.pop();
@@ -325,6 +399,7 @@ PDRMStrategy::ProbeVicinity(Name object)
   // Create the vicinity packet
   Name vicinityName = m_vicinityPrefix.toUri() + object.toUri();
   NS_LOG_INFO(vicinityName);
+  m_probedVicinity(this, object, m_vicinitySize);
 
   shared_ptr<Interest> vicinity = make_shared<Interest>();
   vicinity->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
@@ -441,8 +516,10 @@ PDRMStrategy::PushToRandomDevices(Name object)
   // otherwise, do not send to avoid wasting resources
   NS_LOG_INFO(object << " " << m_userAvailability << "/" << properties.availability);
 
-  if (properties.availability < m_userAvailability)
+  if (properties.availability < m_userAvailability) {
+    m_selectedDevice(this, object, true, false, -1, m_userAvailability);
     return;
+  }
 
   m_consumers[object].clear();
   for (uint32_t i = 0; i < m_vicinity[object].size(); i++)
@@ -455,7 +532,10 @@ PDRMStrategy::PushToRandomDevices(Name object)
 
   if (m_consumers[object].size() > 0) {
     PDRMStrategySelectors provider = m_consumers[object].front();
+    m_selectedDevice(this, object, false, true, provider.getNodeId(), m_userAvailability);
     HintContent(provider.getNodeId(), object);
+  } else {
+    m_selectedDevice(this, object, false, false, -1, m_userAvailability);
   }
 }
 
@@ -515,6 +595,8 @@ PDRMStrategy::HintContent(int deviceId, Name object)
   hint->setInterestLifetime((time::milliseconds) m_hintTimer.GetMilliSeconds());
   hint->setScope(m_vicinitySize);
   hint->setNodeId(deviceId);
+
+  m_hintedContent(this, object, deviceId);
 
   // Send the packet
   hint->wireEncode();

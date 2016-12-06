@@ -81,7 +81,7 @@ PDRMCatalog::addObject(Name object)
 ContentObject
 PDRMCatalog::getObject(Name object)
 {
-  uint32_t objectIndex = m_popularity[object];
+  uint32_t objectIndex = getObjectPopularity(object);
   return m_catalog[objectIndex];
 }
 
@@ -90,6 +90,12 @@ PDRMCatalog::getObjectRequest()
 {
   uint32_t objectIndex = m_popularityDistribution->GetInteger() - 1;
   return m_catalog[objectIndex];
+}
+
+uint32_t
+PDRMCatalog::getObjectPopularity(Name object)
+{
+  return m_popularity[object];
 }
 
 } // namespace ndn

@@ -47,6 +47,12 @@ public:
   EndGame();
 
   virtual void
+  PopulateCatalog(uint32_t index);
+
+  virtual void
+  UpdateNetwork();
+
+  virtual void
   OnInterest(shared_ptr<const Interest> interest);
 
   virtual void
@@ -97,6 +103,14 @@ public:
   void
   CourseChange(Ptr<const MobilityModel> model);
 
+  typedef void (*ReceivedHintCallBack)(Ptr<App> app, Name object, bool isAccepted);
+  typedef void (*ReceivedVicinityDataCallBack)(Ptr<App> app, Name object, int32_t nodeId, int32_t homeNetwork, int32_t preferedLocation, double timeSpent, int32_t currentPosition, double availability, bool isInterested);
+
+  typedef void (*ReplicatedContentCallBack)(Ptr<App> app, Name object);
+  typedef void (*ProbedVicinityCallBack)(Ptr<App> app, Name object, int32_t vicinitySize);
+  typedef void (*SelectedDeviceCallBack)(Ptr<App> app, Name object, bool isSatisfied, bool isHinted, int nodeId, double producerAvailability);
+  typedef void (*HintedContentCallBack)(Ptr<App> app, Name object, int deviceId);
+
 protected:
 
   virtual void
@@ -113,6 +127,8 @@ protected:
 
   uint32_t m_placementPolicy;
 
+  EventId m_updateNetwork;
+
   Name m_hintPrefix;
   Time m_hintTimer;
   double m_altruism;
@@ -120,6 +136,14 @@ protected:
   map<Name, vector<PDRMStrategySelectors> > m_vicinity;
   map<Name, vector<PDRMStrategySelectors> > m_consumers;
   queue<Name> m_pendingReplication;
+
+  TracedCallback<Ptr<App>, Name, bool> m_receivedHint;
+  TracedCallback<Ptr<App>, Name, int32_t, int32_t, double, bool> m_receivedVicinityData;
+  
+  TracedCallback<Ptr<App>, Name> m_replicatedContent;
+  TracedCallback<Ptr<App>, Name, int32_t> m_probedVicinity;
+  TracedCallback<Ptr<App>, Name, bool, bool, int, double> m_selectedDevice;
+  TracedCallback<Ptr<App>, Name, int> m_hintedContent;
 };
 
 } // namespace ndn

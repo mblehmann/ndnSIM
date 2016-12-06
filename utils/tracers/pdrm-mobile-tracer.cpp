@@ -197,15 +197,15 @@ PDRMMobileTracer::Connect()
 void
 PDRMMobileTracer::PrintHeader(std::ostream& os) const
 {
-  os << "MobilityEvent\tTime\tNode\tAppId\tMoving\tHomeNetwork\tPosition\tAvailability\n";
+  os << "MobilityEvent\tTime\tNode\tAppId\tIsMoving\tHomeNetwork\tPosition\tSession\tMovement\tAvailability\n";
 }
 
 void
-PDRMMobileTracer::MobilityEvent(Ptr<App> app, bool moving, uint32_t homeNetwork, uint32_t position, double availability)
+PDRMMobileTracer::MobilityEvent(Ptr<App> app, bool isMoving, uint32_t homeNetwork, uint32_t position, Time session, Time movement, double availability)
 {
   *m_os << "MobilityEvent" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
-        << app->GetId() << "\t" << moving << "\t"
-        << homeNetwork << "\t" << position << "\t" << availability << "\n";
+        << app->GetId() << "\t" << isMoving << "\t" << homeNetwork << "\t" << position << "\t" 
+        << session.ToDouble(Time::S) << "\t" << movement.ToDouble(Time::S) << "\t" << availability << "\n";
 }
 
 } // namespace ndn

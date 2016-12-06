@@ -47,10 +47,10 @@ PDRMUnsolicited::GetTypeId(void)
       .AddConstructor<PDRMUnsolicited>()
 
       // Unsolicited
-      .AddAttribute("ChunksToPush",
-                    "How many chunks to push before movement",
-                    UintegerValue(10000),
-                    MakeUintegerAccessor(&PDRMUnsolicited::m_chunksToPush),
+      .AddAttribute("ObjectsToPush",
+                    "How many objects to push before movement",
+                    UintegerValue(10),
+                    MakeUintegerAccessor(&PDRMUnsolicited::m_objectsToPush),
                     MakeUintegerChecker<uint32_t>())
 
       .AddAttribute("IdleRequest",
@@ -87,9 +87,17 @@ void
 PDRMUnsolicited::OnTimeoutUnsolicitedData(Name object)
 {
   NS_LOG_INFO(object);
-  m_activeRequests.erase(object);
-  m_lastChunkServed.erase(object);
+  m_pushedUnsolicitedObject(this, object, false, true);
+
   m_timeoutUnsolicitedData.erase(object);
+  for (uint32_t i = 0; i < m_activeRequests.size(); i++)
+  {
+    if (object.toUri() == m_activeRequests[i].toUri()) {
+      m_activeRequests.erase(m_activeRequests.begin() + i);
+      NS_LOG_INFO(object);
+      break;
+    }
+  }
 }
 
 void
@@ -113,11 +121,18 @@ PDRMUnsolicited::OnInterest(shared_ptr<const Interest> interest)
   /* Update data structures */
   uint32_t seqNumber = dataName.at(-1).toSequenceNumber();
 
-  if (m_activeRequests.count(objectPrefix) == 0)
-    m_activeRequests.insert(objectPrefix);
+  bool exists = false;
+  for (uint32_t i = 0; i < m_activeRequests.size(); i++)
+  {
+    if (objectPrefix.toUri() == m_activeRequests[i].toUri()) {
+      exists = true;
+      break;
+    }
+  }
 
-  m_lastChunkServed[objectPrefix] = seqNumber;
-  
+  if (!exists)
+    m_activeRequests.push_back(objectPrefix);
+
   Simulator::Remove(m_timeoutUnsolicitedData[objectPrefix]);
   m_timeoutUnsolicitedData[objectPrefix] = Simulator::Schedule(m_idleRequest, &PDRMUnsolicited::OnTimeoutUnsolicitedData, this, objectPrefix);
 
@@ -125,8 +140,14 @@ PDRMUnsolicited::OnInterest(shared_ptr<const Interest> interest)
   ContentObject properties = m_catalog->getObject(objectPrefix);
   if (properties.size == seqNumber + 1)
   {
-    m_activeRequests.erase(objectPrefix);
-    m_lastChunkServed.erase(objectPrefix);
+    for (uint32_t i = 0; i < m_activeRequests.size(); i++)
+    {
+      if (objectPrefix.toUri() == m_activeRequests[i].toUri()) {
+        m_activeRequests.erase(m_activeRequests.begin() + i);
+        NS_LOG_INFO(objectPrefix);
+        break;
+      }
+    }
     Simulator::Remove(m_timeoutUnsolicitedData[objectPrefix]);
     m_timeoutUnsolicitedData.erase(objectPrefix);
   }
@@ -153,7 +174,7 @@ PDRMUnsolicited::OnInterest(shared_ptr<const Interest> interest)
   data->setSignature(signature);
   
   // logging and stats
-//  m_servedData(this, interest->getName());
+  m_servedData(this, interest->getName());
   
   // Send it
   data->wireEncode();
@@ -170,24 +191,23 @@ PDRMUnsolicited::PushUnsolicitedData()
   if (m_activeRequests.size() == 0)
     return;
 
-  uint32_t chunksPerObject = round((double) m_chunksToPush / m_activeRequests.size());
-
   shared_ptr<Name> chunk;
-  uint32_t lastServed;
-  ContentObject properties;
+  ContentObject object;
 
-  for (set<Name>::iterator it = m_activeRequests.begin(); it != m_activeRequests.end(); ++it)
+  for (uint32_t i = 0; i < m_activeRequests.size(); i++)
   {
-    NS_LOG_INFO(*it);
-    NS_LOG_INFO(m_lastChunkServed[*it]);
-    lastServed = m_lastChunkServed[*it];
-    properties = m_catalog->getObject(*it);
-    NS_LOG_INFO(chunksPerObject << " " << properties.size);
-    for (uint32_t i = 1; i <= chunksPerObject && lastServed + i < properties.size; i++)
-    {
-      chunk = make_shared<Name>(*it);
-      chunk->appendSequenceNumber(lastServed + i);
-      SendUnsolicitedData(*chunk);
+    object = m_catalog->getObject(m_activeRequests[i]);
+    if (i < m_objectsToPush) {
+      m_pushedUnsolicitedObject(this, object.name, true, false);
+      NS_LOG_INFO(object.name);
+      for (uint32_t i = 0; i < object.size; i++)
+      {
+        chunk = make_shared<Name>(object.name);
+        chunk->appendSequenceNumber(i);
+        SendUnsolicitedData(*chunk);
+      }
+    } else {
+      m_pushedUnsolicitedObject(this, object.name, false, false);
     }
   }
 
@@ -195,7 +215,6 @@ PDRMUnsolicited::PushUnsolicitedData()
     Simulator::Remove(it->second);
   
   m_activeRequests.clear();
-  m_lastChunkServed.clear();
   m_timeoutUnsolicitedData.clear();
 }
 
@@ -224,7 +243,7 @@ PDRMUnsolicited::SendUnsolicitedData(Name chunk)
   data->setSignature(signature);
   
   // logging and stats
-//  m_pushedUnsolicitedData(this, interest->getName());
+  m_pushedUnsolicitedData(this, data->getName());
   
   // Send it
   data->wireEncode();

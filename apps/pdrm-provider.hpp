@@ -50,10 +50,10 @@ public:
   OnInterest(shared_ptr<const Interest> interest);
 
   virtual void
-  AnnouncePrefix(Name prefix);
+  AnnouncePrefix(Name prefix, bool updateRouting);
 
   virtual void
-  UnannouncePrefix(Name prefix);
+  UnannouncePrefix(Name prefix, bool updateRouting);
 
   virtual void
   StoreObject(Name object);
@@ -62,6 +62,7 @@ public:
   DeleteObject();
 
   typedef void (*ServedDataCallback)(Ptr<App> app, Name object);
+  typedef void (*AnnouncedPrefixCallback)(Ptr<App> app, Name prefix, bool isAnnouncing);
 
 protected:
 
@@ -88,6 +89,7 @@ protected:
   Name m_keyLocator;
 
   TracedCallback<Ptr<App>, Name> m_servedData;
+  TracedCallback<Ptr<App>, Name, bool> m_announcedPrefix;
 };
 
 } // namespace ndn

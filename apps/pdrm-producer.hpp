@@ -58,6 +58,8 @@ public:
   virtual void
   ProduceObject();
 
+  typedef void (*ProducedObjectCallback)(Ptr<App> app, Name object, uint32_t size, double availability, uint32_t popularity);
+
 protected:
 
   virtual void
@@ -74,7 +76,9 @@ protected:
   Name m_objectPrefix;
 
   set<Name> m_producedObjects;
-  Name m_lastProducedObject; 
+  Name m_lastProducedObject;
+
+  TracedCallback<Ptr<App>, Name, uint32_t, double, uint32_t> m_producedObject; 
 };
 
 } // namespace ndn

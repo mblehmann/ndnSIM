@@ -192,12 +192,20 @@ PDRMProducerTracer::Connect()
 {
   Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/ServedData",
                                 MakeCallback(&PDRMProducerTracer::ServedData, this));
+
+  Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/AnnouncedPrefix",
+                                MakeCallback(&PDRMProducerTracer::AnnouncedPrefix, this));
+
+  Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/ProducedObject",
+                                MakeCallback(&PDRMProducerTracer::ProducedObject, this));
 }
 
 void
 PDRMProducerTracer::PrintHeader(std::ostream& os) const
 {
   os << "ServedData\tTime\tNode\tAppId\tObject\n";
+  os << "AnnouncedPrefix\tTime\tNode\tAppId\tPrefix\tIsAnnouncing\n";
+  os << "ProducedObject\tTime\tNode\tAppId\tObject\tSize\tAvailability\tPopularity\n";
 }
 
 void
@@ -206,6 +214,21 @@ PDRMProducerTracer::ServedData(Ptr<App> app, Name object)
   *m_os << "ServedData" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
         << app->GetId() << "\t" << object << "\n";
 }
+
+void
+PDRMProducerTracer::AnnouncedPrefix(Ptr<App> app, Name prefix, bool isAnnouncing)
+{
+  *m_os << "AnnouncedPrefix" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
+        << app->GetId() << "\t" << prefix << "\t" << isAnnouncing << "\n";
+}
+
+void
+PDRMProducerTracer::ProducedObject(Ptr<App> app, Name object, uint32_t size, double availability, uint32_t popularity)
+{
+  *m_os << "ProducedObject" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
+        << app->GetId() << "\t" << object << "\t" << size << "\t" << availability << "\t" << popularity << "\n";
+}
+
 
 } // namespace ndn
 } // namespace ns3

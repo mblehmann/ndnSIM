@@ -36,6 +36,7 @@
 #include "ns3/ndnSIM/utils/tracers/pdrm-consumer-tracer.hpp"
 #include "ns3/ndnSIM/utils/tracers/pdrm-producer-tracer.hpp"
 #include "ns3/ndnSIM/utils/tracers/pdrm-mobile-tracer.hpp"
+#include "ns3/ndnSIM/utils/tracers/pdrm-proposal-tracer.hpp"
 
 // #include "ns3/ndnSIM/model/ndn-app-face.hpp"
 #include "ns3/ndnSIM/model/ndn-l3-protocol.hpp"

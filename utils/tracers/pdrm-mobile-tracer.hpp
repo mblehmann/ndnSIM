@@ -127,7 +127,7 @@ private:
   Connect();
 
   void
-  MobilityEvent(Ptr<App> app, bool moving, uint32_t homeNetwork, uint32_t position, double availability);
+  MobilityEvent(Ptr<App> app, bool isMoving, uint32_t homeNetwork, uint32_t position, Time session, Time movement, double availability);
 
 private:
   std::string m_node;

@@ -68,6 +68,9 @@ public:
   ContentObject
   getObjectRequest();
 
+  uint32_t
+  getObjectPopularity(Name object);
+
 private:
   map<uint32_t, ContentObject> m_catalog;
   map<Name, uint32_t> m_popularity;

@@ -308,6 +308,7 @@ main(int argc, char* argv[])
   ndn::PDRMConsumerTracer::InstallAll(scenario_prefix + inputfile + "-consumer.txt");
   ndn::PDRMProducerTracer::InstallAll(scenario_prefix + inputfile + "-producer.txt");
   ndn::PDRMMobileTracer::InstallAll(scenario_prefix + inputfile + "-mobility.txt");
+  ndn::PDRMProposalTracer::InstallAll(scenario_prefix + inputfile + "-proposal.txt");
 
   Simulator::Run();
   Simulator::Destroy();

@@ -200,26 +200,25 @@ PDRMConsumerTracer::Connect()
 void
 PDRMConsumerTracer::PrintHeader(std::ostream& os) const
 {
-  os << "ChunkDelay\tTime\tNode\tAppId\tObject\tChunk#\tTotalDelay\tLastDelay\tRequestCount\tHopCount\n";
-  os << "DownloadTime\tTime\tNode\tAppId\tObject\tElapsedTime\tSize\tRequests\tTimeouts\n";
+  os << "ChunkDelay\tTime\tNode\tAppId\tChunk\tOrder\tTotalDelay\tLastDelay\tRequestCount\tHopCount\n";
+  os << "DownloadTime\tTime\tNode\tAppId\tObject\tElapsedTime\tRequests\n";
 }
 
 void
-PDRMConsumerTracer::ChunkRetrievalDelay(Ptr<App> app, Name object, uint32_t chunk, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount)
+PDRMConsumerTracer::ChunkRetrievalDelay(Ptr<App> app, Name chunk, uint32_t order, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount)
 {
   *m_os << "ChunkDelay" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
-        << app->GetId() << "\t" << object << "\t" << chunk << "\t"
-        << totalDelay.ToDouble(Time::S) << "\t" << lastDelay.ToDouble(Time::US) << "\t"
+        << app->GetId() << "\t" << chunk << "\t" << order << "\t"
+        << totalDelay.ToDouble(Time::S) << "\t" << lastDelay.ToDouble(Time::S) << "\t"
         << requestCount << "\t" << hopCount << "\n";
 }
 
 void
-PDRMConsumerTracer::ObjectDownloadTime(Ptr<App> app, Name object, Time download, uint32_t size, uint32_t requests, uint32_t timeouts)
+PDRMConsumerTracer::ObjectDownloadTime(Ptr<App> app, Name object, Time download, uint32_t requests)
 {
   *m_os << "DownloadTime" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
         << app->GetId() << "\t" << object << "\t" 
-        << download.ToDouble(Time::S) << "\t"
-        << size << "\t" << requests << "\t" << timeouts << "\n";
+        << download.ToDouble(Time::S) << "\t" << requests << "\n";
 }
 
 } // namespace ndn

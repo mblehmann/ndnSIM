@@ -162,8 +162,7 @@ PDRMConsumer::EndGame()
   for (map<Name, Time>::iterator it = m_objectStartDownloadTime.begin(); it != m_objectStartDownloadTime.end(); ++it)
   {
     object = it->first;
-    m_objectDownloadTime(this, object, Simulator::Now() - m_objectStartDownloadTime[object],
-      m_objectSize[object], m_objectRequests[object], m_objectTimeouts[object]);
+    m_objectDownloadTime(this, object, Simulator::Now() - m_objectStartDownloadTime[object], m_objectRequests[object]);
   }
 }
 
@@ -233,6 +232,7 @@ PDRMConsumer::OnData(shared_ptr<const Data> data)
  
   if (m_chunksMap[object][seqNumber])
     return;
+  NS_LOG_FUNCTION_NOARGS();
 
   // Calculate the hop count
   uint32_t hopCount = 0;
@@ -251,6 +251,8 @@ PDRMConsumer::OnData(shared_ptr<const Data> data)
   m_chunkFirstRequest.erase(chunk);
   m_chunkLastRequest.erase(chunk);
   m_chunkRequestCount.erase(chunk);
+
+  Simulator::Remove(m_retxEvent[chunk]);
   m_retxEvent.erase(chunk);
 
   //NS_LOG_INFO(object << " " << seqNumber << " " << m_chunksMap[object][seqNumber] << " " << m_chunksDownloaded[object]);
@@ -273,7 +275,12 @@ PDRMConsumer::FindObject()
     return;
   }
 
-  ContentObject object = m_catalog->getObjectRequest();  
+  NS_LOG_FUNCTION_NOARGS();
+  ContentObject object;
+  do {
+    object = m_catalog->getObjectRequest();  
+  } while (m_objectStartDownloadTime.count(object.name) > 0);
+  NS_LOG_INFO(object.name);
   StartObjectDownload(object);
 }
 
@@ -320,6 +327,7 @@ PDRMConsumer::StartObjectDownload(ContentObject object)
 void
 PDRMConsumer::ScheduleNextPacket()
 {
+  NS_LOG_FUNCTION_NOARGS();
   // send 
   if (!m_sendEvent.IsRunning()) {
     m_sendEvent = Simulator::ScheduleNow(&PDRMConsumer::GetNextPacket, this);
@@ -332,6 +340,7 @@ PDRMConsumer::GetNextPacket()
   if (!m_active) 
     return;
 
+  NS_LOG_FUNCTION_NOARGS();
   Name chunk;
 
   if (m_chunkRequest.size() > 0) {
@@ -353,6 +362,7 @@ PDRMConsumer::SendPacket(Name chunk)
 {
   if (!m_active) 
     return;
+  NS_LOG_FUNCTION_NOARGS();
 
   Name object = chunk.getPrefix(2);
 
@@ -396,8 +406,7 @@ PDRMConsumer::WillSendOutInterest(Name chunk)
 void
 PDRMConsumer::ConcludeObjectDownload(Name object)
 {
-  m_objectDownloadTime(this, object, Simulator::Now() - m_objectStartDownloadTime[object],
-    m_objectSize[object], m_objectRequests[object], m_objectTimeouts[object]);
+  m_objectDownloadTime(this, object, Simulator::Now() - m_objectStartDownloadTime[object], m_objectRequests[object]);
 
   NS_LOG_INFO(object);
 

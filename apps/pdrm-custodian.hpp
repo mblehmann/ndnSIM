@@ -59,9 +59,6 @@ public:
   ReplicateContent();
 
   virtual void
-  PushContent(Name objectName);
-
-  virtual void
   HintContent(Name object);
 
 protected:
