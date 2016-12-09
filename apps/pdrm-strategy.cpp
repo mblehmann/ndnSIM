@@ -169,7 +169,7 @@ PDRMStrategy::PopulateCatalog(uint32_t index)
   uint32_t popularity = m_catalog->getObjectPopularity(*object);
   m_producedObject(this, *object, co.size, co.availability, popularity);
 
-  if (m_rand->GetValue(0, 1) < 0.5) {
+  if (m_rand->GetValue(0, 1) < (m_storageSize / (double) m_catalog->getCatalogSize())) {
     m_pendingReplication.push(m_lastProducedObject);
     ReplicateContent();
   }
@@ -182,7 +182,6 @@ PDRMStrategy::UpdateNetwork()
   m_warmup = false;
   m_execution = true;
 
-  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
   ndn::GlobalRoutingHelper::CalculateRoutes();
   ndn::GlobalRoutingHelper::PrintFIBs();
 }
@@ -516,7 +515,7 @@ PDRMStrategy::PushToRandomDevices(Name object)
   // otherwise, do not send to avoid wasting resources
   NS_LOG_INFO(object << " " << m_userAvailability << "/" << properties.availability);
 
-  if (properties.availability < m_userAvailability) {
+  if (!m_warmup && properties.availability < m_userAvailability) {
     m_selectedDevice(this, object, true, false, -1, m_userAvailability);
     return;
   }

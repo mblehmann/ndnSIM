@@ -202,6 +202,8 @@ PDRMConsumerTracer::PrintHeader(std::ostream& os) const
 {
   os << "ChunkDelay\tTime\tNode\tAppId\tChunk\tOrder\tTotalDelay\tLastDelay\tRequestCount\tHopCount\n";
   os << "DownloadTime\tTime\tNode\tAppId\tObject\tElapsedTime\tRequests\n";
+  os << "ChunkFailed\tTime\tNode\tAppId\tChunk\tOrder\tTotalDelay\tLastDelay\tRequestCount\tHopCount\n";
+  os << "FailedDownload\tTime\tNode\tAppId\tObject\tElapsedTime\tRequests\n";
 }
 
 void
@@ -217,6 +219,23 @@ void
 PDRMConsumerTracer::ObjectDownloadTime(Ptr<App> app, Name object, Time download, uint32_t requests)
 {
   *m_os << "DownloadTime" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
+        << app->GetId() << "\t" << object << "\t" 
+        << download.ToDouble(Time::S) << "\t" << requests << "\n";
+}
+
+void
+PDRMConsumerTracer::ChunkFailedDelay(Ptr<App> app, Name chunk, uint32_t order, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount)
+{
+  *m_os << "ChunkFailed" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
+        << app->GetId() << "\t" << chunk << "\t" << order << "\t"
+        << totalDelay.ToDouble(Time::S) << "\t" << lastDelay.ToDouble(Time::S) << "\t"
+        << requestCount << "\t" << hopCount << "\n";
+}
+
+void
+PDRMConsumerTracer::ObjectFailedDownload(Ptr<App> app, Name object, Time download, uint32_t requests)
+{
+  *m_os << "FailedDownload" << "\t" << Simulator::Now().ToDouble(Time::S) << "\t" << m_node << "\t"
         << app->GetId() << "\t" << object << "\t" 
         << download.ToDouble(Time::S) << "\t" << requests << "\n";
 }

@@ -86,6 +86,8 @@ public:
 
   typedef void (*ChunkRetrievalDelayCallback)(Ptr<App> app, Name chunk, uint32_t order, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount);
   typedef void (*ObjectDownloadTimeCallback)(Ptr<App> app, Name object, Time download, uint32_t requests);
+  typedef void (*ChunkFailedDelayCallback)(Ptr<App> app, Name chunk, uint32_t order, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount);
+  typedef void (*ObjectFailedDownloadCallback)(Ptr<App> app, Name object, Time download, uint32_t requests);
 
 protected:
 
@@ -143,6 +145,8 @@ protected:
   // Application, object name, download time, total requests
   TracedCallback<Ptr<App>, Name, Time, uint32_t> m_objectDownloadTime;
  
+  TracedCallback<Ptr<App>, Name, uint32_t, Time, Time, uint32_t, uint32_t> m_chunkFailedDelay;
+  TracedCallback<Ptr<App>, Name, Time, uint32_t> m_objectFailedDownload;
 };
 
 } // namespace ndn

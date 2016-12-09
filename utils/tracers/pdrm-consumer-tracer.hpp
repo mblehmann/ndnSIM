@@ -132,6 +132,12 @@ private:
   void
   ObjectDownloadTime(Ptr<App> app, Name object, Time download, uint32_t requests);
 
+  void
+  ChunkFailedDelay(Ptr<App> app, Name chunk, uint32_t order, Time totalDelay, Time lastDelay, uint32_t requestCount, uint32_t hopCount);
+
+  void
+  ObjectFailedDownload(Ptr<App> app, Name object, Time download, uint32_t requests);
+
 private:
   std::string m_node;
   Ptr<Node> m_nodePtr;

@@ -100,7 +100,17 @@ PDRMConsumer::GetTypeId(void)
       .AddTraceSource("ObjectDownloadTime",
                       "Time to download an object",
                       MakeTraceSourceAccessor(&PDRMConsumer::m_objectDownloadTime),
-                      "ns3::ndn::PDRMConsumer::ObjectDownloadTimeCallback");
+                      "ns3::ndn::PDRMConsumer::ObjectDownloadTimeCallback")
+
+      .AddTraceSource("ChunkFailedDelay",
+                      "Failed to retrieve a chunk",
+                      MakeTraceSourceAccessor(&PDRMConsumer::m_chunkFailedDelay),
+                      "ns3::ndn::PDRMConsumer::ChunkFailedDelayCallback")
+
+      .AddTraceSource("ObjectFailedDownload",
+                      "Failed to download an object",
+                      MakeTraceSourceAccessor(&PDRMConsumer::m_objectFailedDownload),
+                      "ns3::ndn::PDRMConsumer::ObjectFailedDownloadCallback");
 
   return tid;
 }
@@ -155,14 +165,14 @@ PDRMConsumer::EndGame()
   {
     chunk = it->first;
     seqNumber = chunk.at(-1).toSequenceNumber();
-    m_chunkRetrievalDelay(this, chunk, seqNumber, Simulator::Now() - m_chunkFirstRequest[chunk],
+    m_chunkFailedDelay(this, chunk, seqNumber, Simulator::Now() - m_chunkFirstRequest[chunk],
       Simulator::Now() - m_chunkLastRequest[chunk], m_chunkRequestCount[chunk], m_maxHopCount);
   }
   
   for (map<Name, Time>::iterator it = m_objectStartDownloadTime.begin(); it != m_objectStartDownloadTime.end(); ++it)
   {
     object = it->first;
-    m_objectDownloadTime(this, object, Simulator::Now() - m_objectStartDownloadTime[object], m_objectRequests[object]);
+    m_objectFailedDownload(this, object, Simulator::Now() - m_objectStartDownloadTime[object], m_objectRequests[object]);
   }
 }
 
