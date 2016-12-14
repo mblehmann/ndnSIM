@@ -72,6 +72,8 @@ protected:
 protected:
   Name m_custodianPrefix;
   bool m_custodian;
+
+  uint32_t m_warmupStorage;
 };
 
 } // namespace ndn

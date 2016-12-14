@@ -71,6 +71,9 @@ public:
   uint32_t
   getObjectPopularity(Name object);
 
+  double
+  getRequestProbability(Name object);
+
 private:
   map<uint32_t, ContentObject> m_catalog;
   map<Name, uint32_t> m_popularity;
@@ -81,6 +84,8 @@ private:
   uint32_t m_objectSize;
   uint32_t m_catalogSize;
 
+  double m_totalProbability;
+  double m_alpha;
 };
 
 } // namespace ndn

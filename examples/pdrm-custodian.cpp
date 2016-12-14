@@ -89,7 +89,6 @@ struct Configuration {
 
  string hint_prefix;
  string hint_timer;
- string altruism;
 
  string custodian_prefix;
 };
@@ -137,7 +136,6 @@ parseInput(string inputfile)
 
  infile >> parameter >> c.hint_prefix;
  infile >> parameter >> c.hint_timer;
- infile >> parameter >> c.altruism;
 
  infile >> parameter >> c.custodian_prefix;
 
@@ -254,7 +252,6 @@ main(int argc, char* argv[])
 
     mobileProvider.SetAttribute("HintPrefix", StringValue(c.hint_prefix)); 
     mobileProvider.SetAttribute("HintTimer", StringValue(c.hint_timer)); 
-    mobileProvider.SetAttribute("Altruism", StringValue(c.altruism)); 
     
     mobileProvider.SetAttribute("CustodianPrefix", StringValue(c.custodian_prefix + to_string(i))); 
     mobileProvider.SetAttribute("Custodian", StringValue("false"));
@@ -280,7 +277,6 @@ main(int argc, char* argv[])
 
     custodian.SetAttribute("HintPrefix", StringValue(c.hint_prefix)); 
     custodian.SetAttribute("HintTimer", StringValue(c.hint_timer)); 
-    custodian.SetAttribute("Altruism", StringValue(c.altruism)); 
 
     custodian.SetAttribute("CustodianPrefix", StringValue(c.custodian_prefix + to_string(i))); 
     custodian.SetAttribute("Custodian", StringValue("true")); 

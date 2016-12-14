@@ -72,6 +72,7 @@ PDRMCustodian::StartApplication()
 
   if (m_custodian) {
     AnnouncePrefix(m_custodianPrefix, true);
+    m_warmupStorage = m_catalog->getCatalogSize() - m_storageSize;
   }
 }
 
@@ -143,6 +144,11 @@ PDRMCustodian::ReplicateContent()
     return;
 
   Name object = m_pendingReplication.front();
+  if (m_warmup && m_warmupStorage > 0) {
+    m_warmupStorage--;
+    return;
+  }
+
   NS_LOG_INFO(object);
   m_replicatedContent(this, object);
 

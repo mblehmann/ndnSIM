@@ -262,8 +262,13 @@ GlobalRoutingHelper::CalculateRoutes()
       NS_LOG_DEBUG("Node " << (*node)->GetId() << " does not export GlobalRouter interface");
       continue;
     }
-    for (auto& pr : source->GetLocalPrefixes())
+
+    vector<Name> announcedPrefixes;
+
+    for (auto& pr : source->GetLocalPrefixes()) {
+      announcedPrefixes.push_back(*pr);
       NS_LOG_DEBUG(*pr);
+    }
     
 
     boost::DistancesMap distances;
@@ -321,9 +326,22 @@ GlobalRoutingHelper::CalculateRoutes()
           }
 
           for (const auto& prefix : dist.first->GetLocalPrefixes()) {
-            NS_LOG_DEBUG(*node << " " << *prefix << " " << std::get<0>(dist.second) << " " << std::get<1>(dist.second));
-            FibHelper::AddRoute(*node, *prefix, std::get<0>(dist.second),
+            bool update = true;
+
+            for (int i = 0; i < announcedPrefixes.size(); i++) {
+              if (announcedPrefixes[i].isPrefixOf(*prefix)) {
+                update = false;
+                break;
+              }
+            }
+
+  	    if (std::get<1>(dist.second) == 65534 || !update) {
+              FibHelper::RemoveRoutes(*node, *prefix);
+            } else {
+              NS_LOG_DEBUG(*node << " " << *prefix << " " << std::get<0>(dist.second) << " " << std::get<1>(dist.second));
+              FibHelper::AddRoute(*node, *prefix, std::get<0>(dist.second),
                                 std::get<1>(dist.second));
+            }
           }
         }
       }

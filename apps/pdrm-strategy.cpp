@@ -81,12 +81,6 @@ PDRMStrategy::GetTypeId(void)
                     StringValue("5s"),
                     MakeTimeAccessor(&PDRMStrategy::m_hintTimer),
                     MakeTimeChecker())
-      
-      .AddAttribute("Altruism",
-                    "Chance that a PDRM will be a consumer",
-                    DoubleValue(1),
-                    MakeDoubleAccessor(&PDRMStrategy::m_altruism),
-                    MakeDoubleChecker<double>())
 
       // Tracing
       .AddTraceSource("ReceivedHint",
@@ -169,10 +163,8 @@ PDRMStrategy::PopulateCatalog(uint32_t index)
   uint32_t popularity = m_catalog->getObjectPopularity(*object);
   m_producedObject(this, *object, co.size, co.availability, popularity);
 
-  if (m_rand->GetValue(0, 1) < (m_storageSize / (double) m_catalog->getCatalogSize())) {
-    m_pendingReplication.push(m_lastProducedObject);
-    ReplicateContent();
-  }
+  m_pendingReplication.push(m_lastProducedObject);
+  ReplicateContent();
 }
 
 void
@@ -229,6 +221,11 @@ PDRMStrategy::OnVicinity(shared_ptr<const Interest> interest)
   NS_LOG_INFO(interest->getName());
 
   Name object = interest->getName().getSubName(1, 2);
+
+  NS_LOG_INFO(m_catalog->getRequestProbability(object));
+  if (m_rand->GetValue(0, 1) > m_catalog->getRequestProbability(object))
+    return;
+
   PDRMStrategySelectors incomingSelectors = interest->getPDRMStrategySelectors();
  
   int32_t nodeId = GetNode()->GetId();
@@ -236,7 +233,7 @@ PDRMStrategy::OnVicinity(shared_ptr<const Interest> interest)
   pair<int32_t, double> preferredLocation = GetPreferredLocation();
   int32_t currentPosition = m_position.x;
   double availability = m_sessionPeriod.GetSeconds() / (m_sessionPeriod.GetSeconds() + m_movementPeriod.GetSeconds() + 0.001);
-  bool interested = m_rand->GetValue(0, 1) < m_altruism;
+  bool interested = true;
  
   Name dataName = interest->getName();
 
@@ -421,164 +418,49 @@ PDRMStrategy::PushContent(Name object)
 
   NS_LOG_INFO(object);
 
-  //random
-  if (!m_placementPolicy)
-    PushToRandomDevices(object);
-  //ranked 
-  else
-    PushToSelectedDevices(object);
+  if (m_vicinity[object].size() > 0) {
+    PDRMStrategySelectors selectedDevice;
+    //random
+    if (!m_placementPolicy)
+      selectedDevice = SelectRandomDevice(object);
+    //ranked 
+    else
+      selectedDevice = SelectBestDevice(object);
+
+    m_selectedDevice(this, object, false, true, selectedDevice.getNodeId(), m_userAvailability);
+    HintContent(selectedDevice.getNodeId(), object);
+  } else {
+    m_selectedDevice(this, object, false, false, -1, m_userAvailability);
+  }
+
 
   ReplicateContent();
 }
 
-void
-PDRMStrategy::PushToSelectedDevices(Name object)
+PDRMStrategySelectors
+PDRMStrategy::SelectBestDevice(Name object)
 {
   NS_LOG_FUNCTION_NOARGS();
-  // figure out if object is underprovisioned
-  ContentObject properties = m_catalog->getObject(object);
-  m_userAvailability = 1 - (m_movementPeriod.GetSeconds() / (m_sessionPeriod.GetSeconds() + m_movementPeriod.GetSeconds() + 0.001));
 
-  // if underprovisioned, send at least 1 copy
-  // otherwise, do not send to avoid wasting resources
-  if (m_userAvailability > properties.availability)
-    return;
-
-  // discover how many devices are in fact interested
-  // and map interested consumers to location
-  map<uint32_t, uint32_t> consumerDistribution;
-
-  m_consumers[object].clear();
-  for (uint32_t i = 0; i < m_vicinity[object].size(); i++)
-  {
-    if (m_vicinity[object][i].getInterest())
-    {
-      m_consumers[object].push_back(m_vicinity[object][i]);
-      uint32_t location = m_vicinity[object][i].getHomeNetwork();
-      if (consumerDistribution.count(location) == 0)
-        consumerDistribution[location] = 0;
-      consumerDistribution[location]++;
+  PDRMStrategySelectors selectedDevice = m_vicinity[object].front();
+  for (uint32_t i = 1; i < m_vicinity[object].size(); i++) {
+    if (m_vicinity[object][i].getAvailability() > selectedDevice.getAvailability()) {
+      selectedDevice = m_vicinity[object][i];
     }
   }
-
-  if (m_consumers[object].size() == 0)
-    return;
-
-  //sort consumers in the vicinity
-  for (uint32_t i = 0; i < m_consumers[object].size()-1; i++)
-  {
-    for (uint32_t j = i+1; j < m_consumers[object].size(); j++)
-    {
-      if (consumerDistribution[m_consumers[object][j].getHomeNetwork()] >= consumerDistribution[m_consumers[object][i].getHomeNetwork()]
-            && m_consumers[object][j].getAvailability() > m_consumers[object][i].getAvailability())
-      {
-         PDRMStrategySelectors temp = m_consumers[object][i];
-         m_consumers[object][i] = m_consumers[object][j];
-         m_consumers[object][j] = temp;
-      }
-    }
-  }
-
-  for (uint32_t i = 0; i < m_consumers[object].size(); i++)
-    NS_LOG_DEBUG("Node " << m_consumers[object][i].getNodeId() << " has location/availability/interest " << m_consumers[object][i].getHomeNetwork() << "/" <<  m_consumers[object][i].getAvailability() << "/" << m_consumers[object][i].getInterest());
-
-  // calculate the percentage of interested consumers
-  double interest = (double) m_consumers[object].size() / (double) m_vicinity[object].size();
-  uint32_t popularLocation = m_consumers[object].front().getHomeNetwork();
-
-  // select the device in the popular area with the closest availability to meet the requirements
-  double requiredAvailability = 1 - ((1-properties.availability) / m_userAvailability);
-
-  PDRMStrategySelectors provider = SelectBestDevice(popularLocation, true, requiredAvailability);
-  HintContent(provider.getNodeId(), object);
-
-  // check if requirements are met and object is unpopular, then send another
-  double providersAvailability = 1 - ((1-m_userAvailability) * (1-provider.getAvailability()));
-  if (interest < 0.1 && properties.availability > providersAvailability)
-  {
-    // select the device not in the popular area with the closest availability to meet the requirements
-    requiredAvailability = 1 - ((1-properties.availability) / providersAvailability);
-
-    provider = SelectBestDevice(popularLocation, false, requiredAvailability);
-    HintContent(provider.getNodeId(), object);
-  }
-}
-
-void
-PDRMStrategy::PushToRandomDevices(Name object)
-{
-  // figure out if object is underprovisioned
-  ContentObject properties = m_catalog->getObject(object);
-  m_userAvailability = 1 - (m_movementPeriod.GetSeconds() / (m_sessionPeriod.GetSeconds() + m_movementPeriod.GetSeconds() + 0.001));
-
-  // if underprovisioned, send only 1 copy, we dont have extra info in the random scenario
-  // otherwise, do not send to avoid wasting resources
-  NS_LOG_INFO(object << " " << m_userAvailability << "/" << properties.availability);
-
-  if (!m_warmup && properties.availability < m_userAvailability) {
-    m_selectedDevice(this, object, true, false, -1, m_userAvailability);
-    return;
-  }
-
-  m_consumers[object].clear();
-  for (uint32_t i = 0; i < m_vicinity[object].size(); i++)
-  {
-    if (m_vicinity[object][i].getInterest())
-    {
-      m_consumers[object].push_back(m_vicinity[object][i]);
-    }
-  }
-
-  if (m_consumers[object].size() > 0) {
-    PDRMStrategySelectors provider = m_consumers[object].front();
-    m_selectedDevice(this, object, false, true, provider.getNodeId(), m_userAvailability);
-    HintContent(provider.getNodeId(), object);
-  } else {
-    m_selectedDevice(this, object, false, false, -1, m_userAvailability);
-  }
+ 
+  return selectedDevice;
 }
 
 PDRMStrategySelectors
-PDRMStrategy::SelectBestDevice(uint32_t location, bool include, double availability)
+PDRMStrategy::SelectRandomDevice(Name object)
 {
   NS_LOG_FUNCTION_NOARGS();
-  Name object = "a";
-  PDRMStrategySelectors selection = m_consumers[object].front();
 
-  // find a device in the given location
-  if (include)
-  {
-    for (uint32_t i = 0; i < m_consumers[object].size(); i++)
-    {
-      if (m_consumers[object][i].getHomeNetwork() == location)
-      {
-        // since it is ordered, the next one will always have a closer availability to the requirement
-        // until it is negative (does not meet). Then we return it.
-        if (m_consumers[object][i].getAvailability() < availability)
-          return selection;
-        selection = m_consumers[object][i];
-      }
-    }
-  }
-  // find a device not in the location
-  else
-  {
-    for (uint32_t i = 0; i < m_consumers[object].size(); i++)
-    {
-      if (m_consumers[object][i].getHomeNetwork() != location)
-      {
-        if (m_consumers[object][i].getAvailability() < availability)
-        {
-          // the first device may not meet the requirements. Then, send it anyway instead of the first overall
-          if (selection == m_consumers[object].front())
-            selection = m_consumers[object][i];
-          return selection;
-        }
-        selection = m_consumers[object][i];
-      }
-    }
-  }
-  return selection;
+  uint32_t deviceIndex = m_rand->GetInteger(0, m_vicinity[object].size()-1);
+  PDRMStrategySelectors selectedDevice = m_vicinity[object][deviceIndex];
+ 
+  return selectedDevice;
 }
 
 void

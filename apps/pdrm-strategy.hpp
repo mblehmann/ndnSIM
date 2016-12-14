@@ -85,14 +85,11 @@ public:
   virtual void
   PushContent(Name objectName);
 
-  virtual void
-  PushToSelectedDevices(Name objectName);
-
-  virtual void
-  PushToRandomDevices(Name objectName);
+  virtual PDRMStrategySelectors
+  SelectBestDevice(Name objectName);
 
   virtual PDRMStrategySelectors
-  SelectBestDevice(uint32_t location, bool include, double availability);
+  SelectRandomDevice(Name objectName);
 
   virtual void
   HintContent(int deviceID, Name object);
@@ -126,15 +123,12 @@ protected:
   uint32_t m_vicinitySize;
 
   uint32_t m_placementPolicy;
-
   EventId m_updateNetwork;
 
   Name m_hintPrefix;
   Time m_hintTimer;
-  double m_altruism;
 
   map<Name, vector<PDRMStrategySelectors> > m_vicinity;
-  map<Name, vector<PDRMStrategySelectors> > m_consumers;
   queue<Name> m_pendingReplication;
 
   TracedCallback<Ptr<App>, Name, bool> m_receivedHint;

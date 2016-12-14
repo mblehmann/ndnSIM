@@ -89,7 +89,6 @@ struct Configuration {
 
  string hint_prefix;
  string hint_timer;
- string altruism;
 
  string vicinity_prefix;
  string placement_policy;
@@ -145,7 +144,6 @@ parseInput(string inputfile)
 
  infile >> parameter >> c.hint_prefix;
  infile >> parameter >> c.hint_timer;
- infile >> parameter >> c.altruism;
 
  return c;
 }
@@ -266,7 +264,6 @@ main(int argc, char* argv[])
 
   mobileProvider.SetAttribute("HintPrefix", StringValue(c.hint_prefix)); 
   mobileProvider.SetAttribute("HintTimer", StringValue(c.hint_timer)); 
-  mobileProvider.SetAttribute("Altruism", StringValue(c.altruism)); 
 
   for (uint32_t i = 0; i < c.mobile_producers; i++) {
     mobileProvider.Install(nodes.Get(c.routers+i));
@@ -308,8 +305,48 @@ main(int argc, char* argv[])
                             "Movement", PointerValue(movement),
                             "PositionAllocator", PointerValue(positionAlloc));
 
-  for (uint32_t i = 0; i < c.mobile_producers; i++) {
-    mobility.Install(nodes.Get(c.routers+i));
+  mobility.Install(nodes.Get(c.routers));
+  ndn::LinkControlHelper::FailLink(nodes.Get(0), nodes.Get(c.routers));
+
+  for (uint32_t i = 1; i < c.mobile_producers; i++) {
+    // Mobile
+    MobilityHelper mobilityProvider;
+
+    double providerAvailability = i / 10.0;
+
+    // Initialize positions of nodes
+    Time session_period_provider;
+    Ptr<RandomVariableStream> session_provider;
+
+    if (providerAvailability == 1) {
+      session_period_provider = simulationTime;
+      session_provider = CreateObject<ConstantRandomVariable>();
+      session_provider->SetAttribute("Constant", DoubleValue(session_period_provider.GetSeconds()));
+    }
+    else {
+      session_period_provider = max(Time::FromDouble(Time(c.period).GetSeconds() * providerAvailability, Time::S), Time("1ns"));
+      session_provider = CreateObject<NormalRandomVariable>();
+      session_provider->SetAttribute("Mean", DoubleValue(session_period_provider.GetSeconds()));
+      session_provider->SetAttribute("Variance", DoubleValue(session_period_provider.GetSeconds()*c.variance));
+      session_provider->SetAttribute("Bound", DoubleValue(session_period_provider.GetSeconds()*(c.variance*2)));
+    }
+
+    Time movement_period_provider = max(Time(c.period) - session_period_provider, Time("1ns"));
+    Ptr<RandomVariableStream> movement_provider = CreateObject<NormalRandomVariable>();
+    movement_provider->SetAttribute("Mean", DoubleValue(movement_period_provider.GetSeconds()));
+    movement_provider->SetAttribute("Variance", DoubleValue(movement_period_provider.GetSeconds()*c.variance));
+    movement_provider->SetAttribute("Bound", DoubleValue(movement_period_provider.GetSeconds()*(c.variance*2)));
+
+    Ptr<ListPositionAllocator> positionAlloc_provider = CreateObject<ListPositionAllocator>();
+    positionAlloc_provider->Add(Vector(0, 0, 0));
+
+    mobilityProvider.SetPositionAllocator(positionAlloc_provider);
+    mobilityProvider.SetMobilityModel("ns3::OnOffMobilityModel",
+                              "Session", PointerValue(session_provider),
+                              "Movement", PointerValue(movement_provider),
+                              "PositionAllocator", PointerValue(positionAlloc_provider));
+
+    mobilityProvider.Install(nodes.Get(c.routers+i));
     ndn::LinkControlHelper::FailLink(nodes.Get(0), nodes.Get(c.routers+i));
   }
 

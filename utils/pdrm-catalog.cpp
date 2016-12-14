@@ -57,6 +57,12 @@ PDRMCatalog::initializeCatalog(uint32_t size, double alpha)
   m_popularityDistribution->SetAttribute("Alpha", DoubleValue(alpha));
 
   m_catalogSize = size;
+  m_alpha = alpha;
+
+  m_totalProbability = 0;
+  for (uint32_t i = 1; i <= size; i++) {
+    m_totalProbability += pow(i, -1*alpha);
+  }
 }
 
 void
@@ -96,6 +102,13 @@ uint32_t
 PDRMCatalog::getObjectPopularity(Name object)
 {
   return m_popularity[object];
+}
+
+double
+PDRMCatalog::getRequestProbability(Name object)
+{
+  uint32_t objectIndex = getObjectPopularity(object);
+  return (pow(objectIndex, -1*m_alpha) / m_totalProbability)*10;
 }
 
 } // namespace ndn
