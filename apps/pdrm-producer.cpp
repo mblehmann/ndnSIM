@@ -84,7 +84,7 @@ PDRMProducer::StartApplication()
 
   // update the producer prefix with the node ID
   m_producerPrefix = m_producerPrefix.toUri() + to_string(GetNode()->GetId());
-  AnnouncePrefix(m_producerPrefix, true);
+  AnnouncePrefix(m_producerPrefix);
 
   if (!m_producingInterval.IsZero()) {
     Simulator::Schedule(m_producingInterval, &PDRMProducer::ProduceObject, this);

@@ -71,7 +71,8 @@ PDRMCustodian::StartApplication()
   PDRMMobileProducer::StartApplication();
 
   if (m_custodian) {
-    AnnouncePrefix(m_custodianPrefix, true);
+    AnnouncePrefix(m_custodianPrefix);
+  } else {
     m_warmupStorage = m_catalog->getCatalogSize() - m_storageSize;
   }
 }
@@ -111,16 +112,8 @@ PDRMCustodian::OnHint(shared_ptr<const Interest> interest)
   Name object = interest->getName().getSubName(2);
   StoreObject(object);
 
-  if (m_warmup) {
-    ConcludeObjectDownload(object);
-    if (m_updateNetwork.IsRunning()) {
-      Simulator::Remove(m_updateNetwork);
-    }
-    m_updateNetwork = Simulator::Schedule(Time("50ms"), &PDRMStrategy::UpdateNetwork, this);
-  } else {
-    m_receivedHint(this, object, true);
-    Simulator::ScheduleNow(&PDRMConsumer::FoundObject, this, object);
-  }
+  m_receivedHint(this, object, true);
+  ConcludeObjectDownload(object);
 }
 
 // PRODUCER ACTIONS
@@ -143,12 +136,13 @@ PDRMCustodian::ReplicateContent()
   if (m_pendingReplication.size() == 0 || m_moving)
     return;
 
-  Name object = m_pendingReplication.front();
-  if (m_warmup && m_warmupStorage > 0) {
+  if (m_warmupStorage > 0) {
     m_warmupStorage--;
+    m_pendingReplication.pop();
     return;
   }
 
+  Name object = m_pendingReplication.front();
   NS_LOG_INFO(object);
   m_replicatedContent(this, object);
 

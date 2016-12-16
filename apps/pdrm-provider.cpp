@@ -161,7 +161,7 @@ PDRMProvider::OnInterest(shared_ptr<const Interest> interest)
  *
  */
 void
-PDRMProvider::AnnouncePrefix(Name prefix, bool updateRouting)
+PDRMProvider::AnnouncePrefix(Name prefix)
 {
   NS_LOG_INFO(prefix);
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
@@ -171,14 +171,15 @@ PDRMProvider::AnnouncePrefix(Name prefix, bool updateRouting)
   ndnGlobalRoutingHelper.AddOrigin(prefix.toUri(), this->GetNode());
 
   FibHelper::AddRoute(GetNode(), prefix, m_face, 0);
-  if (updateRouting) {
-    ndn::GlobalRoutingHelper::CalculateRoutes();
-    ndn::GlobalRoutingHelper::PrintFIBs();
+
+  if (m_updateNetwork.IsRunning()) {
+    Simulator::Remove(m_updateNetwork);
   }
+  m_updateNetwork = Simulator::Schedule(Time("50ms"), &PDRMProvider::UpdateNetwork, this);
 }
 
 void
-PDRMProvider::UnannouncePrefix(Name prefix, bool updateRouting)
+PDRMProvider::UnannouncePrefix(Name prefix)
 {
   NS_LOG_INFO(prefix);
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper = m_global->getGlobalRoutingHelper();
@@ -188,10 +189,20 @@ PDRMProvider::UnannouncePrefix(Name prefix, bool updateRouting)
   ndnGlobalRoutingHelper.RemoveOrigin(prefix.toUri(), this->GetNode());
 
   FibHelper::RemoveRoute(GetNode(), prefix, m_face);
-  if (updateRouting) {
-    ndn::GlobalRoutingHelper::CalculateRoutes();
-    ndn::GlobalRoutingHelper::PrintFIBs();
+
+  if (m_updateNetwork.IsRunning()) {
+    Simulator::Remove(m_updateNetwork);
   }
+  m_updateNetwork = Simulator::Schedule(Time("50ms"), &PDRMProvider::UpdateNetwork, this);
+}
+
+void
+PDRMProvider::UpdateNetwork()
+{
+  NS_LOG_FUNCTION_NOARGS();
+
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+  ndn::GlobalRoutingHelper::PrintFIBs();
 }
 
 void
@@ -212,7 +223,7 @@ PDRMProvider::DeleteObject()
 {
   NS_LOG_FUNCTION_NOARGS();
   Name object = m_storage[m_circularIndex];
-  UnannouncePrefix(object, true);
+  UnannouncePrefix(object);
 }
 
 } // namespace ndn

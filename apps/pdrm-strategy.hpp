@@ -50,9 +50,6 @@ public:
   PopulateCatalog(uint32_t index);
 
   virtual void
-  UpdateNetwork();
-
-  virtual void
   OnInterest(shared_ptr<const Interest> interest);
 
   virtual void
@@ -123,7 +120,6 @@ protected:
   uint32_t m_vicinitySize;
 
   uint32_t m_placementPolicy;
-  EventId m_updateNetwork;
 
   Name m_hintPrefix;
   Time m_hintTimer;

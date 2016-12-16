@@ -168,17 +168,6 @@ PDRMStrategy::PopulateCatalog(uint32_t index)
 }
 
 void
-PDRMStrategy::UpdateNetwork()
-{
-  NS_LOG_FUNCTION_NOARGS();
-  m_warmup = false;
-  m_execution = true;
-
-  ndn::GlobalRoutingHelper::CalculateRoutes();
-  ndn::GlobalRoutingHelper::PrintFIBs();
-}
-
-void
 PDRMStrategy::OnInterest(shared_ptr<const Interest> interest)
 {
   if (!m_active)
@@ -354,7 +343,7 @@ void
 PDRMStrategy::ConcludeObjectDownload(Name object)
 {
   NS_LOG_FUNCTION_NOARGS();
-  PDRMProvider::AnnouncePrefix(object, !m_warmup);
+  PDRMProvider::AnnouncePrefix(object);
   PDRMConsumer::ConcludeObjectDownload(object);
 }
 

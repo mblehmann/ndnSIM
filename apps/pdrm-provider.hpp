@@ -50,10 +50,13 @@ public:
   OnInterest(shared_ptr<const Interest> interest);
 
   virtual void
-  AnnouncePrefix(Name prefix, bool updateRouting);
+  AnnouncePrefix(Name prefix);
 
   virtual void
-  UnannouncePrefix(Name prefix, bool updateRouting);
+  UnannouncePrefix(Name prefix);
+
+  virtual void
+  UpdateNetwork();
 
   virtual void
   StoreObject(Name object);
@@ -74,6 +77,7 @@ protected:
 
 protected:
   set<Name> m_announcedPrefixes;
+  EventId m_updateNetwork;
 
   uint32_t m_virtualPayloadSize;
   Time m_freshness;
