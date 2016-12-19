@@ -136,6 +136,8 @@ PDRMCustodian::ReplicateContent()
   if (m_pendingReplication.size() == 0 || m_moving)
     return;
 
+  NS_LOG_INFO(m_pendingReplication.front() << " " << m_warmupStorage);
+
   if (m_warmupStorage > 0) {
     m_warmupStorage--;
     m_pendingReplication.pop();

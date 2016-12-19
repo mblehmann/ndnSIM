@@ -88,7 +88,7 @@ PDRMProducer::StartApplication()
 
   if (!m_producingInterval.IsZero()) {
     Simulator::Schedule(m_producingInterval, &PDRMProducer::ProduceObject, this);
-    Simulator::ScheduleNow(&PDRMProducer::WarmUp, this);
+    Simulator::Schedule(Time("100ms"), &PDRMProducer::WarmUp, this);
   }
 }
 
