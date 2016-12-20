@@ -391,7 +391,8 @@ PDRMConsumer::SendPacket(Name chunk, bool retransmission)
   m_objectRequests[object]++;
   m_retxEvent[chunk] = Simulator::Schedule(m_interestLifeTime, &PDRMConsumer::OnTimeout, this, chunk);
 
-  ScheduleNextPacket();
+  if (!retransmission)
+    ScheduleNextPacket();
 }
 
 /**
