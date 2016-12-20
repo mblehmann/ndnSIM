@@ -223,7 +223,7 @@ PDRMConsumer::OnTimeout(Name chunk)
   NS_LOG_FUNCTION(chunk);
 
   m_objectTimeouts[object]++;
-  SendPacket(chunk); 
+  SendPacket(chunk, true); 
 }
 
 /**
@@ -356,7 +356,7 @@ PDRMConsumer::GetNextPacket()
   if (m_chunkRequest.size() > 0) {
     chunk = m_chunkRequest.front();
     m_chunkRequest.pop();
-    SendPacket(chunk);
+    SendPacket(chunk, false);
   } else {
     if (m_defaultConsumer) {
       Simulator::Schedule(Seconds(m_requestPeriod->GetValue()), &PDRMConsumer::FindObject, this);
@@ -368,7 +368,7 @@ PDRMConsumer::GetNextPacket()
  * 
  */
 void
-PDRMConsumer::SendPacket(Name chunk)
+PDRMConsumer::SendPacket(Name chunk, bool retransmission)
 {
   if (!m_active) 
     return;

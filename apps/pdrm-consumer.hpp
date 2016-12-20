@@ -76,7 +76,7 @@ public:
   GetNextPacket();
 
   void 
-  SendPacket(Name chunk);
+  SendPacket(Name chunk, bool retransmission);
 
   virtual void
   WillSendOutInterest(Name chunk);
