@@ -195,6 +195,12 @@ PDRMConsumerTracer::Connect()
 
   Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/ObjectDownloadTime",
                                 MakeCallback(&PDRMConsumerTracer::ObjectDownloadTime, this));
+
+  Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/ChunkFailedDelay",
+                                MakeCallback(&PDRMConsumerTracer::ChunkFailedDelay, this));
+
+  Config::ConnectWithoutContext("/NodeList/" + m_node + "/ApplicationList/*/ObjectFailedDownload",
+                                MakeCallback(&PDRMConsumerTracer::ObjectFailedDownload, this));
 }
 
 void
