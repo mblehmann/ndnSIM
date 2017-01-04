@@ -57,7 +57,18 @@ PDRMUnsolicited::GetTypeId(void)
                     "Period to consider a request idle",
                     StringValue("5s"),
                     MakeTimeAccessor(&PDRMUnsolicited::m_idleRequest),
-                    MakeTimeChecker());
+                    MakeTimeChecker())
+
+      // Tracing
+      .AddTraceSource("PushedUnsolicitedData",
+                      "Data chunks pushed by the producer",
+                      MakeTraceSourceAccessor(&PDRMUnsolicited::m_pushedUnsolicitedData),
+                      "ns3::ndn::PDRMUnsolicited::PushedUnsolicitedDataCallback")
+
+      .AddTraceSource("PushedUnsolicitedObject",
+                      "Objects pushed by the producer",
+                      MakeTraceSourceAccessor(&PDRMUnsolicited::m_pushedUnsolicitedObject),
+                      "ns3::ndn::PDRMUnsolicited::PushedUnsolicitedObjectCallback");
 
   return tid;
 }
