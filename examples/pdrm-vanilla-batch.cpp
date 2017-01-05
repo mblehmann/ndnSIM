@@ -205,7 +205,7 @@ main(int argc, char* argv[])
   global->setGlobalRoutingHelper(grHelper);
 
   // Consumer
-  ndn::AppHelper consumer("ns3::ndn::PDRMConsumer");
+  ndn::AppHelper consumer("ns3::ndn::PDRMConsumerBatch");
   consumer.SetAttribute("Lambda", StringValue(c.lambda));
   consumer.SetAttribute("Start", StringValue(c.start));
   consumer.SetAttribute("End", StringValue(c.end));
