@@ -122,6 +122,8 @@ protected:
   double m_lambdaRequests;
   Ptr<ConstantRandomVariable> m_requestPeriod;
   bool m_defaultConsumer;
+  bool m_localConsumer; // locality
+  uint32_t m_position;
 
   // chunk tracing data structures
   map<Name, Time> m_chunkFirstRequest;

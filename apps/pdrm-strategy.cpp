@@ -82,6 +82,12 @@ PDRMStrategy::GetTypeId(void)
                     MakeTimeAccessor(&PDRMStrategy::m_hintTimer),
                     MakeTimeChecker())
 
+      .AddAttribute("LocalProducer",
+                    "Sets whether the producer is biased to a location or not",
+                    BooleanValue(false),
+                    MakeBooleanAccessor(&PDRMStrategy::m_localProducer),
+                    MakeBooleanChecker())
+
       // Tracing
       .AddTraceSource("ReceivedHint",
                       "Hints received by the node",
@@ -211,9 +217,16 @@ PDRMStrategy::OnVicinity(shared_ptr<const Interest> interest)
 
   Name object = interest->getName().getSubName(1, 2);
 
-  NS_LOG_INFO(m_catalog->getRequestProbability(object));
-  if (m_rand->GetValue(0, 1) > m_catalog->getRequestProbability(object))
-    return;
+  if (m_localProducer) {
+    NS_LOG_INFO(m_catalog->getLocalityRequestProbability(object, m_homeNetwork));
+    if (m_rand->GetValue(0, 1) > m_catalog->getLocalityRequestProbability(object, m_homeNetwork))
+      return;
+  }
+  else {
+    NS_LOG_INFO(m_catalog->getRequestProbability(object));
+    if (m_rand->GetValue(0, 1) > m_catalog->getRequestProbability(object))
+      return;
+  }
 
   PDRMStrategySelectors incomingSelectors = interest->getPDRMStrategySelectors();
  

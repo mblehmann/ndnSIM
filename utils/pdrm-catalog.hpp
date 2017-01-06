@@ -39,6 +39,7 @@ struct ContentObject {
   Name name;
   uint32_t size;
   double availability;
+  uint32_t locality;
 };
 
 class PDRMCatalog : public Object
@@ -47,6 +48,20 @@ public:
   PDRMCatalog();
   ~PDRMCatalog();
 
+  // locality
+  void
+  setLocality(uint32_t domains, double locality);
+
+  void
+  initializeLocalityCatalog(uint32_t size, double alpha);
+
+  ContentObject
+  getLocalityObjectRequest(uint32_t domain);
+
+  double
+  getLocalityRequestProbability(Name object, uint32_t domain);
+
+  // default
   void
   setObjectSize(uint32_t objectSize);
 
@@ -86,6 +101,10 @@ private:
 
   double m_totalProbability;
   double m_alpha;
+
+  // locality
+  uint32_t m_domains;
+  double m_locality;
 };
 
 } // namespace ndn

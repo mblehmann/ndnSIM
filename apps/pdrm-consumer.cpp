@@ -78,6 +78,18 @@ PDRMConsumer::GetTypeId(void)
                     MakeBooleanAccessor(&PDRMConsumer::m_defaultConsumer),
                     MakeBooleanChecker())
 
+      .AddAttribute("LocalConsumer",
+                    "Sets whether the consumer requests content with a biased location or not",
+                    BooleanValue(false),
+                    MakeBooleanAccessor(&PDRMConsumer::m_localConsumer),
+                    MakeBooleanChecker())
+
+      .AddAttribute("Position",
+                    "Consumer position in the network",
+                    StringValue("0"),
+                    MakeIntegerAccessor(&PDRMConsumer::m_position),
+                    MakeIntegerChecker<uint32_t>())
+
       // Global
       .AddAttribute("Catalog",
                     "Content catalog",
@@ -179,16 +191,21 @@ PDRMConsumer::EndGame()
 void
 PDRMConsumer::WarmUp()
 {
-  NS_LOG_FUNCTION_NOARGS();
-
   if (Simulator::Now() > m_warmupPeriod) {
     m_warmup = false;
     m_execution = true;
     return;
   }
 
-  ContentObject object = m_catalog->getObjectRequest();
+  ContentObject object;
   shared_ptr<Name> interestName;
+
+  if (m_localConsumer)
+    object = m_catalog->getLocalityObjectRequest(m_position);
+  else
+    object = m_catalog->getObjectRequest();
+
+  NS_LOG_INFO(object.name << " " << object.locality << " @ " << m_position);
 
   // For each chunk, append the sequence number and add it to the interest queue
   for (uint32_t i = 0; i < object.size; i++) {
@@ -285,10 +302,14 @@ PDRMConsumer::FindObject()
     return;
   }
 
-  NS_LOG_FUNCTION_NOARGS();
   ContentObject object;
+  NS_LOG_FUNCTION_NOARGS();
+
   do {
-    object = m_catalog->getObjectRequest();  
+    if (m_localConsumer)
+      object = m_catalog->getLocalityObjectRequest(m_position);
+    else
+      object = m_catalog->getObjectRequest();
   } while (m_objectStartDownloadTime.count(object.name) > 0);
   NS_LOG_INFO(object.name);
   StartObjectDownload(object);
@@ -319,7 +340,7 @@ PDRMConsumer::StartObjectDownload(ContentObject object)
     m_chunkRequest.push(*interestName);
   }
 
-  NS_LOG_INFO(object.name);
+  NS_LOG_INFO(object.name << " " << object.locality << " @ " << m_position);
 
   m_objectStartDownloadTime[object.name] = Simulator::Now();
   m_objectSize[object.name] = object.size;

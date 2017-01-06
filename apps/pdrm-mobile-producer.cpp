@@ -177,7 +177,7 @@ PDRMMobileProducer::CourseChange(Ptr<const MobilityModel> model)
   else
     Move(model);
 
-  NS_LOG_INFO(m_position.x);
+  NS_LOG_INFO("Now @ " << m_position.x);
 }
 
 } // namespace ndn

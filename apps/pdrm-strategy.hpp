@@ -124,6 +124,8 @@ protected:
   Name m_hintPrefix;
   Time m_hintTimer;
 
+  bool m_localProducer;
+
   map<Name, vector<PDRMStrategySelectors> > m_vicinity;
   queue<Name> m_pendingReplication;
 
