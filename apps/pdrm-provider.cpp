@@ -175,7 +175,8 @@ PDRMProvider::AnnouncePrefix(Name prefix)
   if (m_updateNetwork.IsRunning()) {
     Simulator::Remove(m_updateNetwork);
   }
-  m_updateNetwork = Simulator::Schedule(Time("50ms"), &PDRMProvider::UpdateNetwork, this);
+  if (!(Simulator::Now() < Time("0.1s") && GetNode()->GetId() > 17))
+    m_updateNetwork = Simulator::Schedule(Time("50ms"), &PDRMProvider::UpdateNetwork, this);
 }
 
 void
