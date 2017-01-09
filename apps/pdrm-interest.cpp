@@ -75,7 +75,8 @@ void
 PDRMInterest::StartApplication() 
 {
   PDRMMobileProducer::StartApplication();
-  m_homeAgentPrefix = m_homeAgentPrefix.toUri() + to_string(m_homeNetwork);
+  //m_homeAgentPrefix = m_homeAgentPrefix.toUri() + to_string(m_homeNetwork);
+  m_homeAgentPrefix = m_homeAgentPrefix.toUri() + to_string(0);
 }
 
 void

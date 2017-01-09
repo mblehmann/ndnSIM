@@ -341,9 +341,7 @@ main(int argc, char* argv[])
       // Mobile
       MobilityHelper mobilityProvider;
 
-      double providerAvailability = 0.8;
-      if (j == 0)
-        providerAvailability = 0.5;
+      double providerAvailability = (9-j) / 10.0;
 
       // Initialize positions of nodes
       Time session_period_provider;

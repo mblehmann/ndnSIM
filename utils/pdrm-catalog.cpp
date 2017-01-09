@@ -95,7 +95,7 @@ PDRMCatalog::getLocalityRequestProbability(Name object, uint32_t domain)
   else if (objectIndex == m_domains - 1)
     locality = 1 - m_locality;
 
-  return (pow(objectIndex, -1*m_alpha) / m_totalProbability) * locality;
+  return (pow(objectIndex, -1*m_alpha) / m_totalProbability) * 5 * locality;
 }
 
 // default
