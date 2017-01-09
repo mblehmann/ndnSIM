@@ -306,7 +306,7 @@ main(int argc, char* argv[])
 
   Simulator::Stop(simulationTime);
   
-  ndn::L3RateTracer::InstallAll(scenario_prefix + inputfile + "-traffic.txt", Seconds(1));
+  ndn::L3RateTracer::InstallAll(scenario_prefix + inputfile + "-traffic.txt", Minutes(1));
 
   ndn::PDRMConsumerTracer::InstallAll(scenario_prefix + inputfile + "-consumer.txt");
   ndn::PDRMProducerTracer::InstallAll(scenario_prefix + inputfile + "-producer.txt");
