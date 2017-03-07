@@ -112,10 +112,18 @@ PDRMConsumerStreaming::OnTimeout(Name chunk)
 
   uint32_t seqNumber = chunk.at(-1).toSequenceNumber();
 
+  m_chunkFirstRequest.erase(chunk);
+  m_chunkLastRequest.erase(chunk);
+  m_chunkRequestCount.erase(chunk);
+
   m_chunkFailedDelay(this, chunk, seqNumber, Simulator::Now() - m_chunkFirstRequest[chunk],
     Simulator::Now() - m_chunkLastRequest[chunk], m_chunkRequestCount[chunk], m_maxHopCount);
   
   m_objectTimeouts[object]++;
+
+  if (seqNumber+1 == m_objectSize[object])
+    ConcludeObjectDownload(object);
+
 }
 
 /**
