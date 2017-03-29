@@ -157,10 +157,6 @@ main(int argc, char* argv[])
   RngSeedManager::SetSeed(c.seed);
   RngSeedManager::SetRun(c.run);
 
-  string scenario_prefix = "";
-  if (c.scenario == 0)
-    scenario_prefix = "unavail-";
-
   Time simulationTime = Seconds(c.time);
 
   AnnotatedTopologyReader topologyReader("", 1);
@@ -319,12 +315,12 @@ main(int argc, char* argv[])
 
   Simulator::Stop(simulationTime);
 
-  ndn::L3RateTracer::InstallAll(scenario_prefix + inputfile + "-traffic.txt", Minutes(1));
+  ndn::L3RateTracer::InstallAll(inputfile + "-traffic.txt", Minutes(1));
 
-  ndn::PDRMConsumerTracer::InstallAll(scenario_prefix + inputfile + "-consumer.txt");
-  ndn::PDRMProducerTracer::InstallAll(scenario_prefix + inputfile + "-producer.txt");
-  ndn::PDRMMobileTracer::InstallAll(scenario_prefix + inputfile + "-mobility.txt");
-  ndn::PDRMProposalTracer::InstallAll(scenario_prefix + inputfile + "-proposal.txt");
+  ndn::PDRMConsumerTracer::InstallAll(inputfile + "-consumer.txt");
+  ndn::PDRMProducerTracer::InstallAll(inputfile + "-producer.txt");
+  ndn::PDRMMobileTracer::InstallAll(inputfile + "-mobility.txt");
+  ndn::PDRMProposalTracer::InstallAll(inputfile + "-proposal.txt");
 
   Simulator::Run();
   Simulator::Destroy();
