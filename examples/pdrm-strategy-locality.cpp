@@ -331,13 +331,17 @@ main(int argc, char* argv[])
   for (uint32_t i = 0; i < c.routers; i++)
     ndn::LinkControlHelper::FailLink(nodes.Get(i), nodes.Get(c.routers));
 
+  Ptr<RandomVariableStream> providerAvailabilities = CreateObject<UniformRandomVariable>();
+  providerAvailabilities->SetAttribute("Min", DoubleValue(0.6));
+  providerAvailabilities->SetAttribute("Max", DoubleValue(0.9));
+
   // providers
   for (uint32_t i = 0; i < c.routers; i++) {
     for (uint32_t j = 0; j < c.mobile_producers; j++) {
       // Mobile
       MobilityHelper mobilityProvider;
 
-      double providerAvailability = (9-j) / 10.0;
+      double providerAvailability = providerAvailabilities->GetValue();
 
       // Initialize positions of nodes
       Time session_period_provider;
