@@ -171,7 +171,7 @@ double
 PDRMCatalog::getRequestProbability(Name object)
 {
   uint32_t objectIndex = getObjectPopularity(object);
-  return (pow(objectIndex, -1*m_alpha) / m_totalProbability)*10;
+  return (pow(objectIndex, -1*m_alpha) / m_totalProbability)*20;
 }
 
 } // namespace ndn
