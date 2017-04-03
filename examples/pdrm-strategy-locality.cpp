@@ -332,8 +332,8 @@ main(int argc, char* argv[])
     ndn::LinkControlHelper::FailLink(nodes.Get(i), nodes.Get(c.routers));
 
   Ptr<RandomVariableStream> providerAvailabilities = CreateObject<UniformRandomVariable>();
-  providerAvailabilities->SetAttribute("Min", DoubleValue(0.6));
-  providerAvailabilities->SetAttribute("Max", DoubleValue(0.9));
+  providerAvailabilities->SetAttribute("Min", DoubleValue(0.8));
+  providerAvailabilities->SetAttribute("Max", DoubleValue(1.0));
 
   // providers
   for (uint32_t i = 0; i < c.routers; i++) {
